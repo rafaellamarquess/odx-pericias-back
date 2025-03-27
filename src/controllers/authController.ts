@@ -6,7 +6,18 @@ import bcrypt from "bcryptjs";
 
 export const register: express.RequestHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { nome, email, senha, perfil } = req.body;
+    const { nome, email, senha, perfil, rg, cro } = req.body;
+
+    if (!rg) {
+      res.status(400).json({ msg: "RG é obrigatório" });
+      return;
+    }
+
+    if (perfil === "Perito" && !cro) {
+      res.status(400).json({ msg: "Cro é obrigatório para o perfil Perito" });
+      return;
+    }
+
     const usuarioExiste = await User.findOne({ email });
 
     if (usuarioExiste) {
@@ -14,7 +25,7 @@ export const register: express.RequestHandler = async (req: Request, res: Respon
       return;
     }
 
-    const novoUsuario = await User.create({ nome, email, senha, perfil });
+    const novoUsuario = await User.create({ nome, email, senha, perfil, rg, cro });
 
     res.status(201).json({ msg: "Usuário cadastrado com sucesso!", usuario: novoUsuario });
   } catch (err) {
@@ -24,14 +35,34 @@ export const register: express.RequestHandler = async (req: Request, res: Respon
 
 export const login: express.RequestHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { email, senha } = req.body;
+    const { email, senha, rg, cro } = req.body;
     const usuario = await User.findOne({ email });
 
-    if (!usuario || !(await bcrypt.compare(senha, usuario.senha))) {
+    if (!usuario) {
+      res.status(401).json({ msg: "Credenciais inválidas" });
+    }
+
+    if (!usuario) {
       res.status(401).json({ msg: "Credenciais inválidas" });
       return;
     }
+    const senhaValida = await bcrypt.compare(senha, usuario.senha);
+    if (!senhaValida) {
+      res.status(401).json({ msg: "Credenciais inválidas" });
+    }
 
+    if (usuario && usuario.perfil === "Perito" && (!cro || usuario.cro !== cro)) {
+       res.status(400).json({ msg: "Cro inválido para o perfil Perito" });
+    }
+
+    if (usuario && usuario.rg !== rg) {
+      res.status(400).json({ msg: "RG inválido" });
+    }
+
+    if (!usuario) {
+      res.status(401).json({ msg: "Credenciais inválidas" });
+      return;
+    }
     const token = jwt.sign({ id: usuario._id, perfil: usuario.perfil }, process.env.JWT_SECRET!, { expiresIn: "7d" });
 
     res.json({ token, usuario });
@@ -39,6 +70,13 @@ export const login: express.RequestHandler = async (req: Request, res: Response,
     next(err);
   }
 };
+
+
+// Função logout
+export const logout: express.RequestHandler = (req: Request, res: Response): void  => {
+  res.status(200).json({ message: "Logout bem-sucedido" });
+};
+
 
 
 // Função para listar todos os usuários
