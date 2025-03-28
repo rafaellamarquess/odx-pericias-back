@@ -1,7 +1,13 @@
 import mongoose, { Document, Schema } from "mongoose";
 import bcrypt from "bcryptjs";
 
-interface IUser extends Document {
+export enum Perfil {
+  ADMIN = "Admin",
+  PERITO = "Perito",
+  ASSISTENTE = "Assistente",
+}
+
+export interface IUser extends Document {
   nome: string;
   email: string;
   senha: string;

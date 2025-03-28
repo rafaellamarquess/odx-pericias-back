@@ -1,16 +1,25 @@
-import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import { NextFunction, Response } from "express";
+import User from "../models/UserModel";
+import { CustomRequest } from "../types/CustomRequest";
 
-export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
-  const token = req.header("Authorization")?.replace("Bearer ", "");
+export const authenticateToken = async (req: CustomRequest, res: Response, next: NextFunction) => {
+  const token = req.headers.authorization?.split(" ")[1];
 
-  if (!token) return res.status(401).json({ msg: "Acesso negado" });
+  if (!token) {
+    return res.status(401).json({ message: "Token não fornecido." });
+  }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!);
-    (req as any).usuario = decoded;
+    const decoded: any = jwt.verify(token, process.env.JWT_SECRET!);
+    const user = await User.findById(decoded.userId);
+    if (!user) {
+      return res.status(401).json({ message: "Usuário não encontrado." });
+    }
+
+    req.user = user;
     next();
-  } catch (err) {
-    res.status(401).json({ msg: "Token inválido" });
+  } catch (error) {
+    return res.status(401).json({ message: "Token inválido." });
   }
 };
