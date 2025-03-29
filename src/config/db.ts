@@ -1,16 +1,20 @@
-import mongoose from "mongoose";
+import mongoose, { Mongoose } from "mongoose";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-const connectDB = async () => {
-  try {
-    await mongoose.connect(process.env.MONGO_URI!);
-    console.log("MongoDB conectado!");
-  } catch (err) {
-    console.error("Erro ao conectar no MongoDB", err);
-    process.exit(1);
-  }
-};
+mongoose.set("strictQuery", true)
 
+
+async function connectDB() {
+  await mongoose.connect(`mongodb+srv://${process.env.DBUSER}:<${process.env.DBPASS}>@pericias.yvxgieo.mongodb.net/`
+
+  );
+
+  console.log("banco conectado com sucesso")
+  
+}
+
+
+connectDB().catch((err)=> console.log(err))
 export default connectDB;
