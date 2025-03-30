@@ -5,7 +5,7 @@ dotenv.config();
 
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URI!);
+    await mongoose.connect(`mongodb+srv://${process.env.DBUSER}:${process.env.DBPASS}@pericias.yvxgieo.mongodb.net/?retryWrites=true&w=majority&appName=Pericias`);
     console.log("MongoDB conectado!");
   } catch (err) {
     console.error("Erro ao conectar no MongoDB", err);
@@ -14,3 +14,5 @@ const connectDB = async () => {
 };
 
 export default connectDB;
+
+
