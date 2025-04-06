@@ -1,27 +1,32 @@
-import { Evidence, IEvidence } from "./EvidenceModel";
-import { Report, IReport } from "./ReportModel";
-import { ComparisonResult, IComparisonResult } from "./ComparisonResultModel";
 import mongoose, { Document, Schema } from "mongoose";
 
-interface ICase extends mongoose.Document {
+interface ICase extends Document {
   titulo: string;
   descricao: string;
-  status: string;
-  responsavel: mongoose.Types.ObjectId; // Deve ser ObjectId
-  evidencias: Array<any>;
+  status: "Em andamento" | "Finalizado" | "Arquivado";
+  responsavel: mongoose.Types.ObjectId;
+  evidencias: mongoose.Types.ObjectId[];
   dataCriacao: Date;
+  addEvidence(evidenceId: mongoose.Types.ObjectId): void;
+  updateStatus(status: string): void;
 }
 
-const CaseSchema = new mongoose.Schema<ICase>({
+const CaseSchema = new Schema<ICase>({
   titulo: { type: String, required: true },
   descricao: { type: String, required: true },
   status: { type: String, enum: ["Em andamento", "Finalizado", "Arquivado"], required: true },
-  responsavel: { 
-      type: mongoose.Schema.Types.ObjectId, 
-      ref: "User", // Referência ao modelo User
-      required: true 
-  },
-  evidencias: [/* ... */],
+  responsavel: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  evidencias: [{ type: mongoose.Schema.Types.ObjectId, ref: "Evidence" }],
   dataCriacao: { type: Date, default: Date.now }
 });
-export const Case = mongoose.model<ICase>("Case", CaseSchema);
+
+CaseSchema.methods.addEvidence = function (evidenceId: mongoose.Types.ObjectId): void {
+  this.evidencias.push(evidenceId);
+};
+
+CaseSchema.methods.updateStatus = function (newStatus: string): void {
+  this.status = newStatus;
+};
+
+const Case = mongoose.model<ICase>("Case", CaseSchema);
+export { Case, ICase };

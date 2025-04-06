@@ -1,8 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-<<<<<<< HEAD
-=======
 import mongoose from "mongoose";
->>>>>>> gabriella
 import { Case } from "../models/CaseModel";
 
 export const peritoController = {
@@ -13,13 +10,8 @@ export const peritoController = {
       const novoCaso = new Case({
         titulo,
         descricao,
-<<<<<<< HEAD
         status: "Em andamento", // Status inicial
         responsavel, // No caso é o nome do Perito que criou o caso
-=======
-        status: "Em andamento",
-        responsavel,
->>>>>>> gabriella
         evidencias: [],
       });
       await novoCaso.save();
@@ -36,18 +28,9 @@ export const peritoController = {
       const caso = await Case.findById(caseId);
 
       if (!caso) {
-<<<<<<< HEAD
          res.status(404).json({ msg: "Caso não encontrado" });
          return;
       }
-
-       // Adiciona ou altera as evidências do caso
-=======
-        res.status(404).json({ msg: "Caso não encontrado" });
-        return;
-      }
-
->>>>>>> gabriella
       caso.evidencias = evidencias;
       await caso.save();
       res.status(200).json({ msg: "Evidências analisadas com sucesso", caso });
@@ -57,35 +40,21 @@ export const peritoController = {
   },
 
   // Gerar laudo do caso
-<<<<<<< HEAD
   gerarLaudo: async (req: Request, res: Response, next: NextFunction) : Promise<void> => {
-=======
-  gerarLaudo: async (req: Request, res: Response, next: NextFunction): Promise<void> => {
->>>>>>> gabriella
     try {
       const { caseId } = req.params;
       const caso = await Case.findById(caseId);
 
       if (!caso) {
-<<<<<<< HEAD
        res.status(404).json({ msg: "Caso não encontrado" });
       }
 
       // Lógica para gerar o laudo: processamento de evidências, geração de documentos, etc....
-=======
-        res.status(404).json({ msg: "Caso não encontrado" });
-        return;
-      }
-
->>>>>>> gabriella
       res.status(200).json({ msg: "Laudo gerado com sucesso", caso });
     } catch (err) {
       next(err);
     }
   },
-<<<<<<< HEAD
-};
-=======
 
   // Listar casos com filtros (sem busca por texto)
   listarCasos: async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -300,4 +269,3 @@ export const peritoController = {
     }
   },
 };
->>>>>>> gabriella

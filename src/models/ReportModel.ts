@@ -18,12 +18,10 @@ const ReportSchema: Schema = new mongoose.Schema({
   dataCriacao: { type: Date, default: Date.now },
 });
 
-// Método assinaturaDigital Exemplo do Chat
 ReportSchema.methods.assinaturaDigital = function (): void {
   console.log(`Relatório "${this.titulo}" foi assinado digitalmente.`);
 };
 
-// Método exportarPDF Exemplo do Chat
 ReportSchema.methods.exportarPDF = function (): void {
   console.log(`Relatório "${this.titulo}" foi exportado em PDF.`);
 };
