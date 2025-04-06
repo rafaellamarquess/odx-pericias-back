@@ -11,7 +11,7 @@ export const peritoController = {
         titulo,
         descricao,
         status: "Em andamento", // Status inicial
-        responsavel, // No caso é o nome do Perito que criou o caso
+        responsavel, // é o nome do Perito que criou o caso
         evidencias: [],
       });
       await novoCaso.save();

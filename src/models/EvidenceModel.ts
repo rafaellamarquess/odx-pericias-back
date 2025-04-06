@@ -5,6 +5,17 @@ export interface IEvidence extends Document {
   dataColeta: Date;
   coletadoPor: mongoose.Types.ObjectId;
   url?: string;
+  categoria: {
+    type: String,
+    enum: [
+      "Radiografia Panorâmica",
+      "Imagem Intraoral",
+      "Radiografia Periapical",
+      "Análise de Prontuário",
+      "Outro"
+    ],
+    default: "Outro"
+  }  
   upload(): void;
 }
 
