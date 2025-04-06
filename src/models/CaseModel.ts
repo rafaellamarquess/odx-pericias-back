@@ -1,3 +1,6 @@
+import { Evidence, IEvidence } from "./EvidenceModel";
+import { Report, IReport } from "./ReportModel";
+import { ComparisonResult, IComparisonResult } from "./ComparisonResultModel";
 import mongoose, { Document, Schema } from "mongoose";
 
 interface ICase extends mongoose.Document {
