@@ -1,0 +1,42 @@
+[
+  {
+    "nome": "Ana Souza",
+    "email": "ana.souza@email.com",
+    "senha": "senha123",
+    "perfil": "Admin",
+    "rg": "123456789",
+    "cro": ""
+  },
+  {
+    "nome": "Carlos Pereira",
+    "email": "carlos.pereira@email.com",
+    "senha": "senha456",
+    "perfil": "Perito",
+    "rg": "987654321",
+    "cro": "12345"
+  },
+  {
+    "nome": "Fernanda Lima",
+    "email": "fernanda.lima@email.com",
+    "senha": "senha789",
+    "perfil": "Assistente",
+    "rg": "112233445",
+    "cro": ""
+  },
+  {
+    "nome": "Roberto Silva",
+    "email": "roberto.silva@email.com",
+    "senha": "senha101112",
+    "perfil": "Admin",
+    "rg": "556677889",
+    "cro": ""
+  },
+  {
+    "nome": "Juliana Costa",
+    "email": "juliana.costa@email.com",
+    "senha": "senha131415",
+    "perfil": "Perito",
+    "rg": "223344556",
+    "cro": "67890"
+  }
+]

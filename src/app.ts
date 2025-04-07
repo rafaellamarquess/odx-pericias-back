@@ -1,16 +1,21 @@
 import express from "express";
 import cors from "cors";
-import connectDB from "./config/database";
-import authRoutes from "./routes/authRoutes";
-import usersRoutes from "./routes/perfisRoutes";
+import dotenv from "dotenv";
+import routes from "./routes";
+
+dotenv.config();
 
 const app = express();
-connectDB();
 
 app.use(cors());
 app.use(express.json());
 
-app.use("/api/auth", authRoutes);
-app.use("/api/user", usersRoutes);
+// Rota de teste 
+app.get("/", (_req, res) => {
+  res.send("API ODX-Perícias está rodando com sucesso!");
+});
+
+// Todas as rotas centralizadas no /api
+app.use("/api", routes);
 
 export default app;

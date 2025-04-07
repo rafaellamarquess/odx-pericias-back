@@ -1,7 +1,7 @@
 import express from "express";
 import { adminController } from "../controllers/adminController";
 import { peritoController } from "../controllers/peritoController";
-import { assistenteController } from "../controllers/assistenteCrontoller";
+import { assistenteController } from "../controllers/assistenteCrontroller";
 import { checkPermissions } from "../middlewares/permissionsMiddleware";
 import { Perfil } from "../models/UserModel";
 

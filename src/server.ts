@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
-import connectDB from "./config/database"; // Caminho pode variar conforme onde está seu arquivo de conexão
-import app from "./app"; // app.ts deve conter suas rotas e middlewares
+import connectDB from "./config/database";
+import app from "./app"; 
 
 dotenv.config();
 

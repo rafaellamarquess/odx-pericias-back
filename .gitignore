@@ -9,6 +9,10 @@
 /build
 /dist
 
+#utils
+/uploads
+/pdx-utils
+
 # misc
 .DS_Store
 *.pem
