@@ -5,3 +5,4 @@ npm install -D typescript ts-node @types/express @types/node @types/bcryptjs @ty
 
 
 meu ip: 170.78.98.247/32
+ip pro mongo: 0.0.0.0/0

@@ -2,6 +2,9 @@ import { Response, Request, NextFunction } from "express";
 import UserModel from "../models/UserModel";
 
 export const adminController = {
+
+
+  
   // Gerenciar usuários
   gerenciarUsuarios: async (req: Request, res: Response, next: NextFunction):Promise<void> => {
     try {
