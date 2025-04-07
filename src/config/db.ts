@@ -3,6 +3,9 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+
+console.log("lucas")
+
 // Configuração do Mongoose
 mongoose.set("strictQuery", true); // Recomendado para evitar warnings
 
