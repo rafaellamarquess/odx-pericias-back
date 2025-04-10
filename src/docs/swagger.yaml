@@ -154,6 +154,7 @@ paths:
         '200':
           description: Dados enviados com sucesso
 
+    # ROTAS LAUDOS
   /evidence/gerar-laudo/{caseId}:
     post:
       summary: Gera um laudo a partir das evidências
@@ -242,45 +243,10 @@ paths:
         '200':
           description: Detalhes do Relatório
 
+
+#COMPONENTES
 components:
   schemas:
-    RegisterRequest:
-      type: object
-      properties:
-        nome:
-          type: string
-        email:
-          type: string
-        senha:
-          type: string
-        role:
-          type: string
-    LoginRequest:
-      type: object
-      properties:
-        email:
-          type: string
-        senha:
-          type: string
-    User:
-      type: object
-      properties:
-        nome:
-          type: string
-        email:
-          type: string
-        senha:
-          type: string
-        perfil:
-          type: string
-          enum:
-            - Admin
-            - Perito
-            - Assistente
-        rg:
-          type: string
-        cro:
-          type: string
     Case:
       type: object
       properties:
@@ -290,19 +256,36 @@ components:
           type: string
         status:
           type: string
-          enum:
-            - Em andamento
-            - Finalizado
-            - Arquivado
+          enum: [Em andamento, Finalizado, Arquivado]
         responsavel:
           type: string
+          format: uuid
         evidencias:
           type: array
           items:
             type: string
+            format: uuid
         dataCriacao:
           type: string
           format: date-time
+
+    ComparisonResult:
+      type: object
+      properties:
+        resultado:
+          type: string
+        precisao:
+          type: number
+        analisadoPor:
+          type: string
+          format: uuid
+        casoRelacionado:
+          type: string
+          format: uuid
+        dataAnalise:
+          type: string
+          format: date-time
+
     Evidence:
       type: object
       properties:
@@ -310,11 +293,13 @@ components:
           type: string
         dataColeta:
           type: string
-          format: date-time
+          format: date
         coletadoPor:
           type: string
+          format: uuid
         url:
           type: string
+          format: uri
         categoria:
           type: string
           enum:
@@ -323,6 +308,24 @@ components:
             - Radiografia Periapical
             - Análise de Prontuário
             - Outro
+
+    ImageEvidence:
+      allOf:
+        - $ref: '#/components/schemas/Evidence'
+        - type: object
+          properties:
+            imagemURL:
+              type: string
+              format: uri
+
+    TextEvidence:
+      allOf:
+        - $ref: '#/components/schemas/Evidence'
+        - type: object
+          properties:
+            conteudo:
+              type: string
+
     Report:
       type: object
       properties:
@@ -332,8 +335,28 @@ components:
           type: string
         peritoResponsavel:
           type: string
+          format: uuid
         casoRelacionado:
           type: string
+          format: uuid
         dataCriacao:
           type: string
           format: date-time
+
+    User:
+      type: object
+      properties:
+        nome:
+          type: string
+        email:
+          type: string
+          format: email
+        senha:
+          type: string
+        perfil:
+          type: string
+          enum: [Admin, Perito, Assistente]
+        rg:
+          type: string
+        cro:
+          type: string
