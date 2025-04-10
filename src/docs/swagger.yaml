@@ -7,6 +7,8 @@ servers:
   - url: https://odx-pericias-back.onrender.com
 
 paths:
+
+  # ROTAS DE AUTENTICAÇÃO
   /auth/register:
     post:
       summary: Registra um novo usuário
@@ -51,72 +53,26 @@ paths:
         '200':
           description: Lista de usuários
 
-  /admin/gerenciar-usuarios:
-    post:
-      summary: Gerencia usuários (apenas admins)
-      tags: [Admin]
-      responses:
-        '200':
-          description: Usuários gerenciados
-
-  /admin/configurar-sistema:
-    post:
-      summary: Configurações gerais do sistema
-      tags: [Admin]
-      responses:
-        '200':
-          description: Sistema configurado
-
-  /perito/cadastrar-caso:
+  # ROTAS DE CASOS
+  /cases:
     post:
       summary: Cadastra um novo caso
-      tags: [Perito]
+      tags: [Cases]
       responses:
         '201':
           description: Caso cadastrado com sucesso
 
-  /perito/analisar-evidencias:
-    post:
-      summary: Analisa evidências de um caso
-      tags: [Perito]
-      responses:
-        '200':
-          description: Análise registrada
-
-  /perito/gerar-laudo/{caseId}:
-    post:
-      summary: Gera um laudo para o caso
-      tags: [Perito]
-      parameters:
-        - in: path
-          name: caseId
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Laudo gerado
-
-  /perito/listar-casos:
     get:
       summary: Lista todos os casos
-      tags: [Perito]
+      tags: [Cases]
       responses:
         '200':
           description: Lista de casos
 
-  /perito/buscar-casos:
-    get:
-      summary: Busca casos por filtros
-      tags: [Perito]
-      responses:
-        '200':
-          description: Casos filtrados
-
-  /perito/visualizar-caso/{caseId}:
-    get:
-      summary: Visualiza detalhes de um caso
-      tags: [Perito]
+  /cases/{caseId}/status:
+    patch:
+      summary: Atualiza o status de um caso
+      tags: [Cases]
       parameters:
         - in: path
           name: caseId
@@ -125,28 +81,27 @@ paths:
             type: string
       responses:
         '200':
-          description: Detalhes do caso
+          description: Status atualizado com sucesso
 
-  /assistente/coletar-evidencias:
+  # ROTAS DE EVIDÊNCIAS
+  /evidence/text:
     post:
-      summary: Coleta evidências para um caso
-      tags: [Assistente]
+      summary: Upload de evidência textual
+      tags: [Evidências]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Evidence'
       responses:
-        '200':
-          description: Evidências coletadas
+        '201':
+          description: Texto enviado
 
-  /assistente/enviar-dados:
-    post:
-      summary: Envia dados complementares ao caso
-      tags: [Assistente]
-      responses:
-        '200':
-          description: Dados enviados com sucesso
-
-  /evidence/image-evidencia:
+  /evidence/image:
     post:
       summary: Upload de imagem como evidência
-      tags: [Evidência]
+      tags: [Evidências]
       requestBody:
         required: true
         content:
@@ -161,10 +116,106 @@ paths:
         '201':
           description: Imagem enviada
 
-  /report/{reportId}/pdf:
+  /evidence/{caseId}:
     post:
+      summary: Adiciona evidência a um caso
+      tags: [Evidências]
+      parameters:
+        - in: path
+          name: caseId
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Evidência adicionada
+
+  /evidence/coletar:
+    post:
+      summary: Coleta evidências
+      tags: [Evidências]
+      responses:
+        '200':
+          description: Evidências coletadas
+
+  /evidence/analisar:
+    post:
+      summary: Analisa evidências
+      tags: [Evidências]
+      responses:
+        '200':
+          description: Evidências analisadas
+
+  /evidence/enviar:
+    get:
+      summary: Envia dados complementares ao caso
+      tags: [Evidências]
+      responses:
+        '200':
+          description: Dados enviados com sucesso
+
+  /evidence/gerar-laudo/{caseId}:
+    post:
+      summary: Gera um laudo a partir das evidências
+      tags: [Evidências]
+      parameters:
+        - in: path
+          name: caseId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Laudo gerado
+
+  # ROTAS DE RELATÓRIOS (LAUDOS)
+  /report:
+    post:
+      summary: Cria um novo laudo
+      tags: [Laudos]
+      responses:
+        '201':
+          description: Laudo criado
+
+    get:
+      summary: Lista todos os laudos
+      tags: [Laudos]
+      responses:
+        '200':
+          description: Lista de laudos
+
+  /report/generate/{caseId}:
+    post:
+      summary: Gera o conteúdo de um laudo
+      tags: [Laudos]
+      parameters:
+        - in: path
+          name: caseId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Conteúdo gerado
+
+  /report/sign/{reportId}:
+    post:
+      summary: Assina digitalmente o laudo
+      tags: [Laudos]
+      parameters:
+        - in: path
+          name: reportId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Laudo assinado
+
+  /report/pdf/{reportId}:
+    get:
       summary: Exporta laudo em PDF
-      tags: [Laudo]
+      tags: [Laudos]
       parameters:
         - in: path
           name: reportId
@@ -174,6 +225,20 @@ paths:
       responses:
         '200':
           description: PDF gerado com sucesso
+
+  /report/{reportId}:
+    get:
+      summary: Busca laudo por ID
+      tags: [Laudos]
+      parameters:
+        - in: path
+          name: reportId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Detalhes do laudo
 
 components:
   schemas:
