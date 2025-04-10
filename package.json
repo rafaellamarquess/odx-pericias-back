@@ -5,7 +5,9 @@
     "scripts": {
         "dev": "ts-node src/server.ts",
         "build": "tsc",
+        "postbuild": "cp -r src/docs dist/docs",
         "start": "node dist/server.js"
+        
     },
     "devDependencies": {
         "@types/bcryptjs": "^2.4.6",

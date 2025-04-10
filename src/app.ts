@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import routes from "./routes";
 import { swaggerSpec, swaggerUi } from "./config/swagger";
 import YAML from "yamljs";
+import path from "path";
 
 
 dotenv.config();
@@ -13,7 +14,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const swaggerDocument = YAML.load("../docs/swagger.yaml");
+const swaggerDocument = YAML.load(path.join(__dirname, './docs/swagger.yaml'));
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 
