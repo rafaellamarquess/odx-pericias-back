@@ -132,4 +132,23 @@ export const evidenceController = {
       }
     },
 
+      // Assinar digitalmente o Laudo
+      async assinarDigitalmente(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+          const { caseId } = req.params;
+          const caso = await Case.findById(caseId);
+    
+          if (!caso) {
+            res.status(404).json({ msg: "Relatório não encontrado." });
+            return;
+          }
+    
+          caso.assinaturaDigital();
+          res.status(200).json({ msg: `Relatório "${caso.titulo}" assinado digitalmente.` });
+        } catch (err) {
+          next(err);
+        }
+      },
+    
+
 };

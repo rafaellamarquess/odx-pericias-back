@@ -54,17 +54,17 @@ paths:
           description: Lista de usuários
 
   # ROTAS DE CASOS
-  /cases:
+  /casos:
     post:
       summary: Cadastra um novo caso
-      tags: [Cases]
+      tags: [Casos]
       responses:
         '201':
           description: Caso cadastrado com sucesso
 
     get:
       summary: Lista todos os casos
-      tags: [Cases]
+      tags: [Casos]
       responses:
         '200':
           description: Lista de casos
@@ -72,7 +72,7 @@ paths:
   /cases/{caseId}/status:
     patch:
       summary: Atualiza o status de um caso
-      tags: [Cases]
+      tags: [Casos]
       parameters:
         - in: path
           name: caseId
@@ -157,7 +157,7 @@ paths:
   /evidence/gerar-laudo/{caseId}:
     post:
       summary: Gera um laudo a partir das evidências
-      tags: [Evidências]
+      tags: [Laudos]
       parameters:
         - in: path
           name: caseId
@@ -168,37 +168,7 @@ paths:
         '200':
           description: Laudo gerado
 
-  # ROTAS DE RELATÓRIOS (LAUDOS)
-  /report:
-    post:
-      summary: Cria um novo laudo
-      tags: [Laudos]
-      responses:
-        '201':
-          description: Laudo criado
-
-    get:
-      summary: Lista todos os laudos
-      tags: [Laudos]
-      responses:
-        '200':
-          description: Lista de laudos
-
-  /report/generate/{caseId}:
-    post:
-      summary: Gera o conteúdo de um laudo
-      tags: [Laudos]
-      parameters:
-        - in: path
-          name: caseId
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Conteúdo gerado
-
-  /report/sign/{reportId}:
+    /evidence/sign/{caseId}:
     post:
       summary: Assina digitalmente o laudo
       tags: [Laudos]
@@ -212,10 +182,42 @@ paths:
         '200':
           description: Laudo assinado
 
+  # ROTAS DE RELATÓRIOS 
+  /report:
+    post:
+      summary: Cria um relatório
+      tags: [Relatório]
+      responses:
+        '201':
+          description: Relatório criado
+
+    get:
+      summary: Lista todos relatórios
+      tags: [Relatório]
+      responses:
+        '200':
+          description: Lista de Relatórios
+
+  /report/generate/{caseId}:
+    post:
+      summary: Gera o relatório de um caso
+      tags: [Relatório]
+      parameters:
+        - in: path
+          name: caseId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Relatório gerado
+
+
+
   /report/pdf/{reportId}:
     get:
-      summary: Exporta laudo em PDF
-      tags: [Laudos]
+      summary: Exporta Relatório em PDF
+      tags: [Relatório]
       parameters:
         - in: path
           name: reportId
@@ -228,8 +230,8 @@ paths:
 
   /report/{reportId}:
     get:
-      summary: Busca laudo por ID
-      tags: [Laudos]
+      summary: Busca Relatório por ID
+      tags: [Relatório]
       parameters:
         - in: path
           name: reportId
@@ -238,7 +240,7 @@ paths:
             type: string
       responses:
         '200':
-          description: Detalhes do laudo
+          description: Detalhes do Relatório
 
 components:
   schemas:

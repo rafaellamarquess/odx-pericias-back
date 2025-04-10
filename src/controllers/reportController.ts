@@ -47,24 +47,6 @@ export const reportController = {
     }
   },
 
-  // Assinar digitalmente o relatório
-  async assinarDigitalmente(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const { reportId } = req.params;
-      const report = await Report.findById(reportId);
-
-      if (!report) {
-        res.status(404).json({ msg: "Relatório não encontrado." });
-        return;
-      }
-
-      report.assinaturaDigital();
-      res.status(200).json({ msg: `Relatório "${report.titulo}" assinado digitalmente.` });
-    } catch (err) {
-      next(err);
-    }
-  },
-
   // Exportar relatório para PDF 
   async exportarPDF(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
