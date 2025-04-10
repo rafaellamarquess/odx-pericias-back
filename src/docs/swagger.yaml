@@ -1,0 +1,197 @@
+openapi: 3.0.0
+info:
+  title: ODX API
+  version: 1.0.0
+  description: API para gerenciamento de casos e evidências na Odontologia Legal
+servers:
+  - url: https://odx-pericias-back.onrender.com
+
+paths:
+  /auth/register:
+    post:
+      summary: Registra um novo usuário
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Usuário criado com sucesso
+
+  /auth/login:
+    post:
+      summary: Autentica um usuário
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login bem-sucedido
+
+  /auth/logout:
+    post:
+      summary: Realiza logout do usuário
+      tags: [Auth]
+      responses:
+        '200':
+          description: Logout efetuado
+
+  /auth/listusers:
+    get:
+      summary: Lista todos os usuários
+      tags: [Auth]
+      responses:
+        '200':
+          description: Lista de usuários
+
+  /admin/gerenciar-usuarios:
+    post:
+      summary: Gerencia usuários (apenas admins)
+      tags: [Admin]
+      responses:
+        '200':
+          description: Usuários gerenciados
+
+  /admin/configurar-sistema:
+    post:
+      summary: Configurações gerais do sistema
+      tags: [Admin]
+      responses:
+        '200':
+          description: Sistema configurado
+
+  /perito/cadastrar-caso:
+    post:
+      summary: Cadastra um novo caso
+      tags: [Perito]
+      responses:
+        '201':
+          description: Caso cadastrado com sucesso
+
+  /perito/analisar-evidencias:
+    post:
+      summary: Analisa evidências de um caso
+      tags: [Perito]
+      responses:
+        '200':
+          description: Análise registrada
+
+  /perito/gerar-laudo/{caseId}:
+    post:
+      summary: Gera um laudo para o caso
+      tags: [Perito]
+      parameters:
+        - in: path
+          name: caseId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Laudo gerado
+
+  /perito/listar-casos:
+    get:
+      summary: Lista todos os casos
+      tags: [Perito]
+      responses:
+        '200':
+          description: Lista de casos
+
+  /perito/buscar-casos:
+    get:
+      summary: Busca casos por filtros
+      tags: [Perito]
+      responses:
+        '200':
+          description: Casos filtrados
+
+  /perito/visualizar-caso/{caseId}:
+    get:
+      summary: Visualiza detalhes de um caso
+      tags: [Perito]
+      parameters:
+        - in: path
+          name: caseId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Detalhes do caso
+
+  /assistente/coletar-evidencias:
+    post:
+      summary: Coleta evidências para um caso
+      tags: [Assistente]
+      responses:
+        '200':
+          description: Evidências coletadas
+
+  /assistente/enviar-dados:
+    post:
+      summary: Envia dados complementares ao caso
+      tags: [Assistente]
+      responses:
+        '200':
+          description: Dados enviados com sucesso
+
+  /evidence/image-evidencia:
+    post:
+      summary: Upload de imagem como evidência
+      tags: [Evidência]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Imagem enviada
+
+  /report/{reportId}/pdf:
+    post:
+      summary: Exporta laudo em PDF
+      tags: [Laudo]
+      parameters:
+        - in: path
+          name: reportId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: PDF gerado com sucesso
+
+components:
+  schemas:
+    RegisterRequest:
+      type: object
+      properties:
+        nome:
+          type: string
+        email:
+          type: string
+        senha:
+          type: string
+        role:
+          type: string
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+        senha:
+          type: string
