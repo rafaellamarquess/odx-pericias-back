@@ -3,8 +3,9 @@
 Este é um projeto backend para um sistema de gestão de casos forenses.
 
 🔗 **API em Produção**: [https://odx-pericias-back.onrender.com](https://odx-pericias-back.onrender.com)
-🔗 **API em Produção**: [ttps://odx-pericias-back.onrender.com/api-docs](ttps://odx-pericias-back.onrender.com/api-docs)
-h
+
+🔗 **Documentação da API**: [https://odx-pericias-back.onrender.com/api-docs](https://odx-pericias-back.onrender.com/api-docs)
+
 ## Principais Tecnologias Utilizadas
 - Node.js
 - Express
