@@ -155,7 +155,7 @@ paths:
         '200':
           description: Evidências analisadas
 
-  /api/evidence/enviar:
+/api/evidence/enviar:
     get:
       summary: Envia dados complementares ao caso
       tags: [Evidências]
