@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { Report } from "../models/ReportModel";
 import puppeteer from "puppeteer";
+import { Case } from "../models/CaseModel";
 
 export const reportController = {
   // Criar um novo relatório
@@ -17,6 +18,30 @@ export const reportController = {
       });
 
       res.status(201).json({ msg: "Relatório criado com sucesso.", report: newReport });
+    } catch (err) {
+      next(err);
+    }
+  },
+
+    
+  // Gerar laudo e atualizar data de fechamento
+  async generateReport(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { caseId } = req.params;
+      const { titulo, conteudo, peritoResponsavel } = req.body;
+
+      const report = await Report.create({
+        titulo,
+        conteudo,
+        peritoResponsavel,
+        dataCriacao: new Date()
+      });
+
+      await Case.findByIdAndUpdate(caseId, {
+        $set: { dataFechamento: new Date() }
+      });
+
+      res.status(201).json(report);
     } catch (err) {
       next(err);
     }

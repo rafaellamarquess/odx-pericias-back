@@ -1,10 +1,51 @@
-import { Response } from "express";
+import { NextFunction, Response, Request } from "express";
 import { CustomRequest } from "../types/CustomRequest";
 import cloudinary from "../config/cloudinary";
 import { ImageEvidence } from "../models/ImageEvidenceModel";
 import { TextEvidence } from "../models/TextEvidenceModel";
+import { Evidence } from "../models/EvidenceModel";
+import { Case } from "../models/CaseModel";
 
 export const evidenceController = {
+
+ // Adicionar evidência
+ async addEvidence(req: Request & { params: { caseId: string } }, res: Response, next: NextFunction) {
+  try {
+    const { caseId } = req.params;
+    const evidence = await Evidence.create(req.body);
+
+    await Case.findByIdAndUpdate(caseId, {
+      $push: { evidencias: evidence._id }
+    });
+
+    res.status(200).json({ msg: "Evidência adicionada com sucesso." });
+  } catch (err) {
+    next(err);
+  }
+},
+
+  // Analisar evidências
+  async analisarEvidencias(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { caseId, evidencias } = req.body;
+      const caso = await Case.findById(caseId);
+
+      if (!caso) {
+        res.status(404).json({ msg: "Caso não encontrado" });
+        return;
+      }
+
+      caso.evidencias = evidencias;
+      await caso.save();
+
+      res.status(200).json({ msg: "Evidências analisadas com sucesso", caso });
+    } catch (err) {
+      next(err);
+    }
+  },
+
+
+
   uploadImageEvidence: async (req: CustomRequest, res: Response): Promise<void> => {
     try {
       if (!req.file?.path) {
@@ -47,4 +88,48 @@ export const evidenceController = {
       res.status(500).json({ msg: "Erro ao enviar texto." });
     }
   },
+
+
+  // Coletar evidências
+  coletarEvidencias: async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { caseId, evidencias } = req.body;
+      const caso = await Case.findById(caseId);
+
+      if (!caso) {
+      res.status(404).json({ msg: "Caso não encontrado" });
+        return;
+      }
+
+      caso.evidencias.push(...evidencias); // Adiciona novas evidências ao caso
+      await caso.save();
+      res.status(200).json({ msg: "Evidências coletadas com sucesso", caso });
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  // Enviar dados
+  enviarDados: (req: Request, res: Response) => {
+    res.status(200).json({ msg: "Dados enviados com sucesso." });
+  },
+  
+    // Gerar laudo (placeholder genérico)
+    async gerarLaudo(req: Request, res: Response, next: NextFunction) {
+      try {
+        const { caseId } = req.params;
+        const caso = await Case.findById(caseId);
+  
+        if (!caso) {
+          res.status(404).json({ msg: "Caso não encontrado" });
+          return;
+        }
+  
+        // lógica futura de geração real de laudo
+        res.status(200).json({ msg: "Laudo gerado com sucesso", caso });
+      } catch (err) {
+        next(err);
+      }
+    },
+
 };

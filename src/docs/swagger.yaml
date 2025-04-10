@@ -195,3 +195,78 @@ components:
           type: string
         senha:
           type: string
+    User:
+      type: object
+      properties:
+        nome:
+          type: string
+        email:
+          type: string
+        senha:
+          type: string
+        perfil:
+          type: string
+          enum:
+            - Admin
+            - Perito
+            - Assistente
+        rg:
+          type: string
+        cro:
+          type: string
+    Case:
+      type: object
+      properties:
+        titulo:
+          type: string
+        descricao:
+          type: string
+        status:
+          type: string
+          enum:
+            - Em andamento
+            - Finalizado
+            - Arquivado
+        responsavel:
+          type: string
+        evidencias:
+          type: array
+          items:
+            type: string
+        dataCriacao:
+          type: string
+          format: date-time
+    Evidence:
+      type: object
+      properties:
+        tipo:
+          type: string
+        dataColeta:
+          type: string
+          format: date-time
+        coletadoPor:
+          type: string
+        url:
+          type: string
+        categoria:
+          type: string
+          enum:
+            - Radiografia Panorâmica
+            - Imagem Intraoral
+            - Radiografia Periapical
+            - Análise de Prontuário
+            - Outro
+    Report:
+      type: object
+      properties:
+        titulo:
+          type: string
+        conteudo:
+          type: string
+        peritoResponsavel:
+          type: string
+        casoRelacionado:
+          type: string
+        dataCriacao:
+          type: string
+          format: date-time

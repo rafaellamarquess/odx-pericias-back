@@ -71,13 +71,10 @@ export const login: express.RequestHandler = async (req: Request, res: Response,
   }
 };
 
-
 // Função logout
 export const logout: express.RequestHandler = (req: Request, res: Response): void  => {
   res.status(200).json({ message: "Logout bem-sucedido" });
 };
-
-
 
 // Função para listar todos os usuários
 export const listUsers = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
