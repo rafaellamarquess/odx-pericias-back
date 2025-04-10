@@ -3,6 +3,7 @@ info:
   title: ODX API
   version: 1.0.0
   description: API para gerenciamento de casos e evidências na Odontologia Legal
+
 servers:
   - url: https://odx-pericias-back.onrender.com
 
@@ -18,7 +19,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RegisterRequest'
+              $ref: '#/components/schemas/User'
       responses:
         '201':
           description: Usuário criado com sucesso
@@ -58,6 +59,12 @@ paths:
     post:
       summary: Cadastra um novo caso
       tags: [Casos]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Case'
       responses:
         '201':
           description: Caso cadastrado com sucesso
@@ -93,7 +100,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Evidence'
+              $ref: '#/components/schemas/TextEvidence'
       responses:
         '201':
           description: Texto enviado
@@ -105,13 +112,9 @@ paths:
       requestBody:
         required: true
         content:
-          multipart/form-data:
+          application/json:
             schema:
-              type: object
-              properties:
-                file:
-                  type: string
-                  format: binary
+              $ref: '#/components/schemas/ImageEvidence'
       responses:
         '201':
           description: Imagem enviada
@@ -126,6 +129,12 @@ paths:
           required: true
           schema:
             type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Evidence'
       responses:
         '201':
           description: Evidência adicionada
@@ -154,7 +163,7 @@ paths:
         '200':
           description: Dados enviados com sucesso
 
-    # ROTAS LAUDOS
+  # ROTAS LAUDOS
   /evidence/gerar-laudo/{caseId}:
     post:
       summary: Gera um laudo a partir das evidências
@@ -169,7 +178,7 @@ paths:
         '200':
           description: Laudo gerado
 
-    /evidence/sign/{caseId}:
+  /evidence/sign/{reportId}:
     post:
       summary: Assina digitalmente o laudo
       tags: [Laudos]
@@ -188,6 +197,12 @@ paths:
     post:
       summary: Cria um relatório
       tags: [Relatório]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Report'
       responses:
         '201':
           description: Relatório criado
@@ -212,8 +227,6 @@ paths:
       responses:
         '200':
           description: Relatório gerado
-
-
 
   /report/pdf/{reportId}:
     get:
@@ -242,7 +255,6 @@ paths:
       responses:
         '200':
           description: Detalhes do Relatório
-
 
 #COMPONENTES
 components:
@@ -359,4 +371,13 @@ components:
         rg:
           type: string
         cro:
+          type: string
+
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        senha:
           type: string
