@@ -108,6 +108,11 @@ export const evidenceController = {
       next(err);
     }
   },
+
+  // Enviar dados
+  enviarDados: (req: Request, res: Response) => {
+    res.status(200).json({ msg: "Dados enviados com sucesso." });
+  },
   
     // Gerar laudo (placeholder genérico)
     async gerarLaudo(req: Request, res: Response, next: NextFunction) {
@@ -144,4 +149,6 @@ export const evidenceController = {
           next(err);
         }
       },
+    
+
 };
