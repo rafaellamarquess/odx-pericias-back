@@ -10,7 +10,7 @@ servers:
 paths:
 
   # ROTAS DE AUTENTICAÇÃO
-   /api/auth/register:
+  /api/auth/register:
     post:
       summary: Registra um novo usuário
       tags: [Auth]
@@ -24,7 +24,7 @@ paths:
         '201':
           description: Usuário criado com sucesso
 
-   /api/auth/login:
+  /api/auth/login:
     post:
       summary: Autentica um usuário
       tags: [Auth]
@@ -38,7 +38,7 @@ paths:
         '200':
           description: Login bem-sucedido
 
-   /api/auth/logout:
+  /api/auth/logout:
     post:
       summary: Realiza logout do usuário
       tags: [Auth]
@@ -46,7 +46,7 @@ paths:
         '200':
           description: Logout efetuado
 
-   /api/auth/listusers:
+  /api/auth/listusers:
     get:
       summary: Lista todos os usuários
       tags: [Auth]
@@ -55,7 +55,7 @@ paths:
           description: Lista de usuários
 
   # ROTAS DE CASOS
-/api/casos:
+  /api/casos:
     post:
       summary: Cadastra um novo caso
       tags: [Casos]
@@ -76,7 +76,7 @@ paths:
         '200':
           description: Lista de casos
 
-/api/cases/{caseId}/status:
+  /api/cases/{caseId}/status:
     patch:
       summary: Atualiza o status de um caso
       tags: [Casos]
@@ -91,7 +91,7 @@ paths:
           description: Status atualizado com sucesso
 
   # ROTAS DE EVIDÊNCIAS
-/api/evidence/text:
+  /api/evidence/text:
     post:
       summary: Upload de evidência textual
       tags: [Evidências]
@@ -105,7 +105,7 @@ paths:
         '201':
           description: Texto enviado
 
-/api/evidence/image:
+  /api/evidence/image:
     post:
       summary: Upload de imagem como evidência
       tags: [Evidências]
@@ -119,7 +119,7 @@ paths:
         '201':
           description: Imagem enviada
 
-/api/evidence/{caseId}:
+  /api/evidence/{caseId}:
     post:
       summary: Adiciona evidência a um caso
       tags: [Evidências]
@@ -139,7 +139,7 @@ paths:
         '201':
           description: Evidência adicionada
 
-/evidence/coletar:
+  /api/evidence/coletar:
     post:
       summary: Coleta evidências
       tags: [Evidências]
@@ -147,7 +147,7 @@ paths:
         '200':
           description: Evidências coletadas
 
-/api/evidence/analisar:
+  /api/evidence/analisar:
     post:
       summary: Analisa evidências
       tags: [Evidências]
@@ -155,7 +155,7 @@ paths:
         '200':
           description: Evidências analisadas
 
-/api/evidence/enviar:
+  /api/evidence/enviar:
     get:
       summary: Envia dados complementares ao caso
       tags: [Evidências]
@@ -164,7 +164,7 @@ paths:
           description: Dados enviados com sucesso
 
   # ROTAS LAUDOS
-/api/evidence/gerar-laudo/{caseId}:
+  /api/evidence/gerar-laudo/{caseId}:
     post:
       summary: Gera um laudo a partir das evidências
       tags: [Laudos]
@@ -178,7 +178,7 @@ paths:
         '200':
           description: Laudo gerado
 
-/api/evidence/sign/{reportId}:
+  /api/evidence/sign/{reportId}:
     post:
       summary: Assina digitalmente o laudo
       tags: [Laudos]
@@ -192,8 +192,8 @@ paths:
         '200':
           description: Laudo assinado
 
-  # ROTAS DE RELATÓRIOS 
-/api/report:
+  # ROTAS DE RELATÓRIOS
+  /api/report:
     post:
       summary: Cria um relatório
       tags: [Relatório]
@@ -214,7 +214,7 @@ paths:
         '200':
           description: Lista de Relatórios
 
-/api/report/generate/{caseId}:
+  /api/report/generate/{caseId}:
     post:
       summary: Gera o relatório de um caso
       tags: [Relatório]
@@ -228,7 +228,7 @@ paths:
         '200':
           description: Relatório gerado
 
-/api/report/pdf/{reportId}:
+  /api/report/pdf/{reportId}:
     get:
       summary: Exporta Relatório em PDF
       tags: [Relatório]
@@ -242,7 +242,7 @@ paths:
         '200':
           description: PDF gerado com sucesso
 
-/api/report/{reportId}:
+  /api/report/{reportId}:
     get:
       summary: Busca Relatório por ID
       tags: [Relatório]
@@ -256,7 +256,6 @@ paths:
         '200':
           description: Detalhes do Relatório
 
-#COMPONENTES
 components:
   schemas:
     Case:
