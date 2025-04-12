@@ -1,9 +1,9 @@
-import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
-import { CustomRequest } from '../types/CustomRequest';
-import { IUser } from '../models/UserModel';
+import { Request, Response, NextFunction } from "express";
+import jwt from "jsonwebtoken";
+import { CustomRequest } from "../types/CustomRequest";
+import { IUser } from "../models/UserModel";
 
-export const checkPermissions = (...perfisPermitidos: string[]) => {
+export const checkPermissions = (perfisPermitidos: string[]) => {
   return (req: CustomRequest, res: Response, next: NextFunction): void => {
     try {
       const token = req.header("Authorization")?.replace("Bearer ", "");
@@ -18,12 +18,13 @@ export const checkPermissions = (...perfisPermitidos: string[]) => {
 
       const userPerfil = req.user.perfil;
       if (!perfisPermitidos.includes(userPerfil)) {
-       res.status(403).json({ msg: "Acesso negado. Permissões insuficientes." });
+        res.status(403).json({ msg: "Acesso negado. Permissões insuficientes." });
+        return;
       }
 
       next();
     } catch (err) {
-     res.status(401).json({ msg: "Token inválido ou expirado." });
+      res.status(401).json({ msg: "Token inválido ou expirado." });
     }
   };
 };

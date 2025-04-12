@@ -2,7 +2,8 @@ import { Router } from "express";
 import authRoutes from "./authRoutes";
 import evidenceRoutes from "./evidenceRoutes";
 import reportRoutes from "./reportRoutes";
-import caseRoutes from "./caseRoutes"; // Adicionado
+import caseRoutes from "./caseRoutes";
+import patientRoutes from  "./patientRoutes";
 
 const router = Router();
 
@@ -10,6 +11,7 @@ const router = Router();
 router.use("/auth", authRoutes);
 router.use("/evidence", evidenceRoutes);
 router.use("/report", reportRoutes);
-router.use("/cases", caseRoutes); // Adicionado
+router.use("/cases", caseRoutes); 
+router.use("/patients", patientRoutes);
 
 export default router;

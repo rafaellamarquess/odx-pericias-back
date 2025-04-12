@@ -44,8 +44,6 @@ export const evidenceController = {
     }
   },
 
-
-
   uploadImageEvidence: async (req: CustomRequest, res: Response): Promise<void> => {
     try {
       if (!req.file?.path) {

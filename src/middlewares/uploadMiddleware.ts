@@ -6,9 +6,8 @@ const storage = new CloudinaryStorage({
   cloudinary,
   params: async (req, file) => {
     return {
-      folder: `evidencias/${req.body.tipo}`, // pasta onde o arquivo será salvo
+      folder: `evidencias/${req.body.tipo}`,
       allowed_formats: ["jpg", "png", "jpeg", "pdf"],
-      // public_id: `${Date.now()}-${file.originalname}`, // opcional
     };
   },
 });
