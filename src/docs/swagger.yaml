@@ -166,7 +166,7 @@ paths:
       summary: Adiciona uma nova evidência (imagem ou texto)
       tags: [Evidências]
       parameters:
-        - name: caseId
+        - name: caseTitle
           in: path
           required: true
           schema:

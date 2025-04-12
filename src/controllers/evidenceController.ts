@@ -1,14 +1,23 @@
 import { NextFunction, Response, Request } from "express";
 import cloudinary from "../config/cloudinary";
 import { Evidence } from "../models/EvidenceModel";
+import { Case } from "../models/CaseModel"; // importa o model do caso
 
 export const evidenceController = {
   // Adicionar evidência
   async addEvidence(req: Request, res: Response, next: NextFunction) {
     try {
-      const { caseId, tipo } = req.params;
+      const { caseTitle, tipo } = req.params;
       const { categoria, vitima, sexo, estadoCorpo, lesoes, coletadoPor, conteudo } = req.body;
 
+      // Busca o caso pelo título
+      const foundCase = await Case.findOne({ titulo: caseTitle });
+
+      if (!foundCase) {
+        return res.status(404).json({ msg: "Caso não encontrado com esse título." });
+      }
+
+      const caseId = foundCase._id;
       let evidence;
 
       if (tipo === "imagem" && req.file?.path) {
