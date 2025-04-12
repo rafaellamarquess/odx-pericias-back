@@ -78,7 +78,7 @@ paths:
                   example: "Caso envolvendo a identificação de uma vítima de acidente."
                 responsavel:
                   type: string
-                  example: "60c72b2f9fd1a2b9b2a557a6"
+                  example: "Nome Usuário"
                 dataCriacao:
                   type: string
                   format: date
@@ -413,9 +413,23 @@ components:
 
     LoginRequest:
       type: object
+      required:
+        - email
+        - senha
+        - rg
+        - perfil
       properties:
         email:
           type: string
           format: email
+          example: usuario@email.com
         senha:
           type: string
+          example: "senhaSegura123"
+        rg:
+          type: string
+          example: "123456789"
+        perfil:
+          type: string
+          enum: [ADMIN, PERITO, ASSISTENTE]
+          example: "PERITO"
