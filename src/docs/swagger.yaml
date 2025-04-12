@@ -7,13 +7,15 @@ info:
 servers:
   - url: https://odx-pericias-back.onrender.com
 
-paths:
+security:
+  - BearerAuth: []
 
-  # ROTAS DE AUTENTICAÇÃO
+paths:
   /api/auth/register:
     post:
       summary: Registra um novo usuário
       tags: [Auth]
+      security: []  # sem autenticação
       requestBody:
         required: true
         content:
@@ -28,6 +30,7 @@ paths:
     post:
       summary: Autentica um usuário
       tags: [Auth]
+      security: []  # sem autenticação
       requestBody:
         required: true
         content:
@@ -37,6 +40,14 @@ paths:
       responses:
         '200':
           description: Login bem-sucedido
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 
   /api/auth/logout:
     post:
@@ -54,14 +65,11 @@ paths:
         '200':
           description: Lista de usuários
 
-  # ROTAS DE CASOS
   /api/cases:
     post:
       summary: Criar um novo caso
       description: Cria um novo caso com as informações fornecidas.
       tags: [Casos]
-      security:
-        - BearerAuth: []
       requestBody:
         description: Dados do novo caso a ser criado
         required: true
@@ -72,13 +80,13 @@ paths:
               properties:
                 titulo:
                   type: string
-                  example: "Caso de identificação de vítima"
+                  example: "Identificação de vítima no litoral"
                 descricao:
                   type: string
-                  example: "Caso envolvendo a identificação de uma vítima de acidente."
+                  example: "Caso envolvendo a identificação de um corpo encontrado em uma praia."
                 responsavel:
                   type: string
-                  example: "Nome Usuário"
+                  example: "Julinana Costa"
                 dataCriacao:
                   type: string
                   format: date
@@ -102,7 +110,6 @@ paths:
   /api/cases/{caseId}/status:
     patch:
       summary: Atualizar status do caso
-      description: Atualiza o status de um caso existente.
       tags: [Casos]
       parameters:
         - in: path
@@ -123,7 +130,7 @@ paths:
                   example: "Finalizado"
       responses:
         '200':
-          description: Status do caso atualizado com sucesso
+          description: Status atualizado
           content:
             application/json:
               schema:
@@ -136,7 +143,6 @@ paths:
   /api/cases/{caseId}/finalizar:
     patch:
       summary: Finalizar caso
-      description: Finaliza um caso específico e altera o status para "Finalizado".
       tags: [Casos]
       parameters:
         - in: path
@@ -146,7 +152,7 @@ paths:
             type: string
       responses:
         '200':
-          description: Caso finalizado com sucesso
+          description: Caso finalizado
           content:
             application/json:
               schema:
@@ -154,23 +160,17 @@ paths:
                 properties:
                   msg:
                     type: string
-                    example: "Caso 'Caso de identificação de vítima' finalizado com sucesso."
+                    example: "Caso 'Identificação de vítima no litoral' finalizado com sucesso."
         '404':
           description: Caso não encontrado
         '500':
           description: Erro ao finalizar caso
 
-  # ROTAS DE EVIDÊNCIAS
   /api/evidence:
     post:
       summary: Adiciona uma nova evidência
       tags: [Evidências]
       parameters:
-        - name: caseTitle
-          in: path
-          required: true
-          schema:
-            type: string
         - name: tipo
           in: query
           required: true
@@ -187,6 +187,7 @@ paths:
               properties:
                 categoria:
                   type: string
+                  example: "Radiografia Panorâmica"
                 vitima:
                   type: string
                   enum: [identificada, não identificada]
@@ -198,8 +199,10 @@ paths:
                   enum: [inteiro, fragmentado, carbonizado, putrefacto, esqueleto]
                 lesoes:
                   type: string
+                  example: "Fraturas múltiplas na mandíbula"
                 coletadoPor:
                   type: string
+                  example: "Julinana Costa"
                 file:
                   type: string
                   format: binary
@@ -213,6 +216,7 @@ paths:
               properties:
                 categoria:
                   type: string
+                  example: "Análise textual de registro odontológico"
                 vitima:
                   type: string
                   enum: [identificada, não identificada]
@@ -224,14 +228,16 @@ paths:
                   enum: [inteiro, fragmentado, carbonizado, putrefacto, esqueleto]
                 lesoes:
                   type: string
+                  example: "Lesões ósseas relatadas em documentos anteriores"
                 coletadoPor:
                   type: string
+                  example: "Juliana Costa"
                 conteudo:
                   type: string
                   example: "Descrição detalhada da evidência textual"
       responses:
         '200':
-          description: Evidência adicionada com sucesso
+          description: Evidência adicionada
           content:
             application/json:
               schema:
@@ -243,13 +249,12 @@ paths:
                   evidence:
                     $ref: '#/components/schemas/Evidence'
         '400':
-          description: Requisição inválida ou dados ausentes
+          description: Dados inválidos
         '401':
           description: Não autorizado
         '500':
           description: Erro interno do servidor
 
-  # ROTAS DE RELATÓRIOS
   /api/report:
     post:
       summary: Gera um relatório pericial para um caso
@@ -262,7 +267,7 @@ paths:
             type: string
       responses:
         '200':
-          description: Relatório gerado com sucesso
+          description: Relatório gerado
           content:
             application/pdf:
               schema:
@@ -285,15 +290,18 @@ paths:
             type: string
       responses:
         '200':
-          description: Relatório assinado digitalmente com sucesso
+          description: Relatório assinado
         '404':
           description: Relatório não encontrado
         '500':
           description: Erro ao assinar o relatório
 
-
-#COMPONENTES
 components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   schemas:
     Case:
       type: object
@@ -305,12 +313,13 @@ components:
           example: "Caso de identificação de vítima"
         descricao:
           type: string
-          example: "Caso envolvendo a identificação de uma vítima de acidente."
+          example: "Caso envolvendo a identificação de uma vítima de acidente de carro."
         status:
           type: string
           enum: [Em andamento, Finalizado, Arquivado]
         responsavel:
           type: string
+          example: "PJuliana Costa"
         evidencias:
           type: array
           items:
@@ -324,12 +333,13 @@ components:
       properties:
         caso:
           type: string
-          description: Título do caso relacionado à evidência
+          description: Título do caso relacionado
         tipo:
           type: string
           enum: [imagem, texto]
         categoria:
           type: string
+          example: "Radiografia Panorâmica"
         dataUpload:
           type: string
           format: date-time
@@ -349,10 +359,9 @@ components:
         imagemURL:
           type: string
           format: uri
-        caso:
-          type: string
         coletadoPor:
           type: string
+          example: "Dra. Helena Costa"
         laudo:
           type: string
 
@@ -398,38 +407,40 @@ components:
       properties:
         nome:
           type: string
+          example: "Juliana Costa"
         email:
           type: string
           format: email
+          example: julina.costa@email.com
         senha:
           type: string
+          example: "senha"
         perfil:
           type: string
           enum: [Admin, Perito, Assistente]
+          example: "Perito"
         rg:
           type: string
+          example: "123456789"
         cro:
           type: string
+          example: "12345"
 
     LoginRequest:
       type: object
-      required:
-        - email
-        - senha
-        - rg
-        - perfil
+      required: [email, senha, rg, perfil]
       properties:
         email:
           type: string
           format: email
-          example: usuario@email.com
+          example: roberta.silva@email.com
         senha:
           type: string
-          example: "senhaSegura123"
+          example: "senha"
         rg:
           type: string
           example: "123456789"
         perfil:
           type: string
-          enum: [ADMIN, PERITO, ASSISTENTE]
-          example: "PERITO"
+          enum: [Admin, Perito, Assistente]
+          example: "Admin"
