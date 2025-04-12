@@ -1,3 +1,4 @@
+// models/Case.ts
 import mongoose, { Document, Schema } from "mongoose";
 
 interface ICase extends Document {
@@ -9,7 +10,6 @@ interface ICase extends Document {
   dataCriacao: Date;
   addEvidence(evidenceId: mongoose.Types.ObjectId): void;
   updateStatus(status: string): void;
-  assinaturaDigital: () => void;
 }
 
 const CaseSchema = new Schema<ICase>({
@@ -25,9 +25,6 @@ CaseSchema.methods.addEvidence = function (evidenceId: mongoose.Types.ObjectId):
   this.evidencias.push(evidenceId);
 };
 
-CaseSchema.methods.assinaturaDigital = function () {
-  console.log(`Caso "${this.titulo}" assinado digitalmente.`);
-};
 
 CaseSchema.methods.updateStatus = function (newStatus: string): void {
   this.status = newStatus;

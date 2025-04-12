@@ -5,7 +5,7 @@ import { Case } from "../models/CaseModel";
 
 export const reportController = {
   // Criar um novo relatório
-  async createReport(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async createReport (req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { titulo, conteudo, peritoResponsavel, casoRelacionado } = req.body;
 
@@ -25,7 +25,7 @@ export const reportController = {
 
     
   // Gerar laudo e atualizar data de fechamento
-  async generateReport(req: Request, res: Response, next: NextFunction) {
+  async generateReport (req: Request, res: Response, next: NextFunction) {
     try {
       const { caseId } = req.params;
       const { titulo, conteudo, peritoResponsavel } = req.body;
@@ -48,7 +48,7 @@ export const reportController = {
   },
 
   // Exportar relatório para PDF 
-  async exportarPDF(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async exportarPDF (req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { reportId } = req.params;
       const report = await Report.findById(reportId).populate("peritoResponsavel").populate("casoRelacionado");
@@ -108,7 +108,7 @@ export const reportController = {
   },
 
   // Listar todos os relatórios
-  async listarRelatorios(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async listarRelatorios (req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const reports = await Report.find().populate("peritoResponsavel casoRelacionado");
       res.status(200).json(reports);
@@ -118,7 +118,7 @@ export const reportController = {
   },
 
   // Buscar um relatório por ID
-  async buscarPorId(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async buscarPorId (req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { reportId } = req.params;
       const report = await Report.findById(reportId).populate("peritoResponsavel casoRelacionado");

@@ -1,34 +1,34 @@
-import mongoose, { Schema, Document } from "mongoose";
+import mongoose, { Document, Schema } from "mongoose";
 
-export interface IEvidence extends Document {
-  tipo: string;
-  dataColeta: Date;
+interface IEvidence extends Document {
+  tipo: "imagem" | "texto";
+  categoria: string;
+  dataUpload: Date;
+  vitima: "identificada" | "não identificada";
+  sexo: "masculino" | "feminino" | "indeterminado";
+  estadoCorpo: "inteiro" | "fragmentado" | "carbonizado" | "putrefacto" | "esqueleto";
+  lesoes?: string;
+  caso: mongoose.Types.ObjectId; // referência ao Case
   coletadoPor: mongoose.Types.ObjectId;
-  url?: string;
-  categoria: {
-    type: String,
-    enum: [
-      "Radiografia Panorâmica",
-      "Imagem Intraoral",
-      "Radiografia Periapical",
-      "Análise de Prontuário",
-      "Outro"
-    ],
-    default: "Outro"
-  }  
-  upload(): void;
+  imagemURL?: string; // URL da imagem no Cloudinary
 }
 
 const EvidenceSchema = new Schema<IEvidence>({
-  tipo: { type: String, required: true },
-  dataColeta: { type: Date, required: true },
-  coletadoPor: { type: Schema.Types.ObjectId, ref: "User", required: true },
-  url: { type: String },
-}, { discriminatorKey: 'evidenceType', timestamps: true });
-
-EvidenceSchema.methods.upload = function (): void {
-  console.log(`Evidência do tipo ${this.tipo} foi enviada.`);
-};
+  tipo: { type: String, enum: ["imagem", "texto"], required: true },
+  categoria: { type: String, required: true },
+  dataUpload: { type: Date, default: Date.now },
+  vitima: { type: String, enum: ["identificada", "não identificada"], required: true },
+  sexo: { type: String, enum: ["masculino", "feminino", "indeterminado"], required: true },
+  estadoCorpo: { 
+    type: String, 
+    enum: ["inteiro", "fragmentado", "carbonizado", "putrefacto", "esqueleto"], 
+    required: true 
+  },
+  lesoes: { type: String },
+  caso: { type: mongoose.Schema.Types.ObjectId, ref: "Case", required: true },
+  coletadoPor: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  imagemURL: { type: String } // Armazena o link da imagem hospedada no Cloudinary
+});
 
 const Evidence = mongoose.model<IEvidence>("Evidence", EvidenceSchema);
-export { Evidence };
+export { Evidence, IEvidence };

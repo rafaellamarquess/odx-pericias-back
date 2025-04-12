@@ -6,13 +6,14 @@ import { Report } from "../models/ReportModel";
 
 export const caseController = {
   // Criar novo caso
-  async createCase(req: Request, res: Response, next: NextFunction) {
+  async createCase (req: Request, res: Response, next: NextFunction) {
     try {
-      const { titulo, descricao, responsavel } = req.body;
+      const { titulo, descricao, responsavel, dataCriacao } = req.body;
       const newCase = new Case({
         titulo,
         descricao,
         responsavel,
+        dataCriacao: new Date(dataCriacao),
         status: "Em andamento",
         evidencias: [],
       });
@@ -25,7 +26,7 @@ export const caseController = {
 
 
   // Atualizar status do caso
-  async updateStatus(req: Request, res: Response, next: NextFunction) {
+  async updateStatus (req: Request, res: Response, next: NextFunction) {
     try {
       const { caseId } = req.params;
       const { status } = req.body;
@@ -39,7 +40,7 @@ export const caseController = {
 
  
   // Listar casos com filtros e paginação
-  async listarCasos(req: Request, res: Response, next: NextFunction) {
+  async listarCasos (req: Request, res: Response, next: NextFunction) {
     try {
       const { dataInicio, dataFim, status, responsavel, page = "1", limit = "10" } = req.query;
 
@@ -120,7 +121,7 @@ export const caseController = {
   },
 
   // Buscar casos com texto e filtros
-  async buscarCasos(req: Request, res: Response, next: NextFunction) {
+  async buscarCasos (req: Request, res: Response, next: NextFunction) {
     try {
       const { search, dataInicio, dataFim, status, responsavel, page = "1", limit = "10" } = req.query;
 
@@ -217,7 +218,7 @@ export const caseController = {
   },
 
   // Visualizar detalhes de um caso
-  async visualizarCaso(req: Request, res: Response, next: NextFunction) {
+  async visualizarCaso (req: Request, res: Response, next: NextFunction) {
     try {
       const { caseId } = req.params;
 

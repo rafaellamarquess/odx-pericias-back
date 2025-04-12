@@ -1,7 +1,5 @@
 import { NextFunction, Response, Request } from "express";
-import { CustomRequest } from "../types/CustomRequest";
 import cloudinary from "../config/cloudinary";
-import { ImageEvidence } from "../models/ImageEvidenceModel";
 import { TextEvidence } from "../models/TextEvidenceModel";
 import { Evidence } from "../models/EvidenceModel";
 import { Case } from "../models/CaseModel";
@@ -9,16 +7,57 @@ import { Case } from "../models/CaseModel";
 export const evidenceController = {
 
  // Adicionar evidência
- async addEvidence(req: Request & { params: { caseId: string } }, res: Response, next: NextFunction) {
+ async addEvidence(req: Request, res: Response, next: NextFunction) {
   try {
-    const { caseId } = req.params;
-    const evidence = await Evidence.create(req.body);
+    const { caseId, tipo } = req.params;  // Caso e tipo (imagem ou texto)
+    const { categoria, vitima, sexo, estadoCorpo, lesoes, coletadoPor } = req.body;
 
-    await Case.findByIdAndUpdate(caseId, {
-      $push: { evidencias: evidence._id }
-    });
+    let evidence;
 
-    res.status(200).json({ msg: "Evidência adicionada com sucesso." });
+    // Caso seja uma evidência de imagem
+    if (tipo === "imagem" && req.file?.path) {
+      // Envia a imagem para o Cloudinary
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: "evidencias",
+        use_filename: true,
+        unique_filename: false
+      });
+
+      // Cria a evidência de imagem
+      evidence = await Evidence.create({
+        tipo: "imagem",
+        categoria,
+        vitima,
+        sexo,
+        estadoCorpo,
+        lesoes,
+        caso: caseId,
+        coletadoPor,
+        imagemURL: result.secure_url,  // URL da imagem no Cloudinary
+      });
+    }
+
+    // Caso seja uma evidência de texto
+    if (tipo === "texto") {
+      evidence = await TextEvidence.create({
+        tipo: "texto",
+        dataColeta: new Date(),
+        coletadoPor,
+        conteudo: req.body.conteudo
+      });
+    }
+
+    // Atualiza o caso com a nova evidência
+    if (evidence) {
+      const caso = await Case.findByIdAndUpdate(caseId, {
+        $push: { evidencias: evidence._id }
+      });
+      res.status(200).json({ msg: "Evidência adicionada com sucesso.", evidence });
+    } else {
+      res.status(400).json({ msg: "Falha ao adicionar evidência. Tipo inválido ou dados ausentes." });
+    }
+
+    res.status(200).json({ msg: "Evidência adicionada com sucesso.", evidence });
   } catch (err) {
     next(err);
   }
@@ -44,50 +83,6 @@ export const evidenceController = {
     }
   },
 
-  uploadImageEvidence: async (req: CustomRequest, res: Response): Promise<void> => {
-    try {
-      if (!req.file?.path) {
-        res.status(400).json({ msg: "Arquivo não enviado." });
-        return;
-      }
-
-      const result = await cloudinary.uploader.upload(req.file.path, {
-        folder: "evidences",
-      });
-
-      const novaEvidencia = await ImageEvidence.create({
-        tipo: "imagem",
-        dataColeta: new Date(),
-        coletadoPor: req.user!._id,
-        imagemURL: result.secure_url,
-      });
-
-      res.status(201).json(novaEvidencia);
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ msg: "Erro ao enviar imagem." });
-    }
-  },
-
-  uploadTextEvidence: async (req: CustomRequest, res: Response): Promise<void> => {
-    try {
-      const { conteudo } = req.body;
-
-      const novaEvidencia = await TextEvidence.create({
-        tipo: "texto",
-        dataColeta: new Date(),
-        coletadoPor: req.user!._id,
-        conteudo,
-      });
-
-      res.status(201).json(novaEvidencia);
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ msg: "Erro ao enviar texto." });
-    }
-  },
-
-
   // Coletar evidências
   coletarEvidencias: async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -110,43 +105,5 @@ export const evidenceController = {
   // Enviar dados
   enviarDados: (req: Request, res: Response) => {
     res.status(200).json({ msg: "Dados enviados com sucesso." });
-  },
-  
-    // Gerar laudo (placeholder genérico)
-    async gerarLaudo(req: Request, res: Response, next: NextFunction) {
-      try {
-        const { caseId } = req.params;
-        const caso = await Case.findById(caseId);
-  
-        if (!caso) {
-          res.status(404).json({ msg: "Caso não encontrado" });
-          return;
-        }
-  
-        // lógica futura de geração real de laudo
-        res.status(200).json({ msg: "Laudo gerado com sucesso", caso });
-      } catch (err) {
-        next(err);
-      }
-    },
-
-      // Assinar digitalmente o Laudo
-      async assinarDigitalmente(req: Request, res: Response, next: NextFunction): Promise<void> {
-        try {
-          const { caseId } = req.params;
-          const caso = await Case.findById(caseId);
-    
-          if (!caso) {
-            res.status(404).json({ msg: "Relatório não encontrado." });
-            return;
-          }
-    
-          caso.assinaturaDigital();
-          res.status(200).json({ msg: `Relatório "${caso.titulo}" assinado digitalmente.` });
-        } catch (err) {
-          next(err);
-        }
-      },
-    
-
+  }, 
 };
