@@ -5,7 +5,7 @@ import { Case } from "../models/CaseModel"; // Importando o modelo de "Case"
 
 export const evidenceController = {
   // Adicionar evidência
-  async addEvidence(req: Request, res: Response, next: NextFunction) {
+  async addEvidence(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { caseTitle, tipo } = req.params;
       const { categoria, vitima, sexo, estadoCorpo, lesoes, coletadoPor, conteudo } = req.body;
@@ -14,7 +14,8 @@ export const evidenceController = {
       const foundCase = await Case.findOne({ titulo: caseTitle });
 
       if (!foundCase) {
-        return res.status(404).json({ msg: "Caso não encontrado com esse título." });
+        res.status(404).json({ msg: "Caso não encontrado com esse título." });
+        return;
       }
 
       const caseId = foundCase._id; // Usando o ID do caso encontrado

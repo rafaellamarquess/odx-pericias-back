@@ -7,6 +7,6 @@ import { Perfil } from "../models/UserModel";
 const router = express.Router();
 const multerUpload = multer({ dest: "uploads/" });
 
-router.post("/", checkPermissions([Perfil.ADMIN, Perfil.PERITO]), evidenceController.addEvidence);
+router.post("/", checkPermissions([Perfil.ADMIN, Perfil.PERITO]),  multerUpload.single("file"), evidenceController.addEvidence);
 
 export default router;
