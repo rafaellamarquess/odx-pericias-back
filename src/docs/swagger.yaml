@@ -255,6 +255,7 @@ paths:
   /api/report:
     get:
       summary: Gera um relatório pericial para um caso
+      tags: [Relatório]
       parameters:
         - in: path
           name: caseId
@@ -277,6 +278,7 @@ paths:
   /api/report/sign/{reportId}:
     patch:
       summary: Assina digitalmente um relatório
+      tags: [Relatório]
       parameters:
         - in: path
           name: reportId
@@ -291,6 +293,8 @@ paths:
         '500':
           description: Erro ao assinar o relatório
 
+
+#COMPONENTES
 components:
   schemas:
     Case:
