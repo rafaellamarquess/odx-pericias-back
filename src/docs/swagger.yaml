@@ -55,7 +55,7 @@ paths:
           description: Lista de usuários
 
   # ROTAS DE CASOS
-  /api/casos:
+  /api/cases:
     post:
       summary: Criar um novo caso
       description: Cria um novo caso com as informações fornecidas.
@@ -99,7 +99,7 @@ paths:
         '400':
           description: Erro na solicitação
 
-  /api/casos/{caseId}/status:
+  /api/cases/{caseId}/status:
     patch:
       summary: Atualizar status do caso
       description: Atualiza o status de um caso existente.
@@ -133,7 +133,7 @@ paths:
         '404':
           description: Caso não encontrado
 
-  /api/casos/{caseId}/finalizar:
+  /api/cases/{caseId}/finalizar:
     patch:
       summary: Finalizar caso
       description: Finaliza um caso específico e altera o status para "Finalizado".
@@ -251,7 +251,7 @@ paths:
 
   # ROTAS DE RELATÓRIOS
   /api/report:
-    get:
+    post:
       summary: Gera um relatório pericial para um caso
       tags: [Relatório]
       parameters:
