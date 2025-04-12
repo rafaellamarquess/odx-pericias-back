@@ -56,305 +56,402 @@ paths:
 
   # ROTAS DE CASOS
   /api/casos:
-    post:
-      summary: Cadastra um novo caso
-      tags: [Casos]
+      post:
+      summary: Criar um novo caso
+      description: Cria um novo caso com as informações fornecidas.
+      tags:
+        - Casos
+      security:
+        - BearerAuth: []
       requestBody:
+        description: Dados do novo caso a ser criado
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Case'
+              type: object
+              properties:
+                titulo:
+                  type: string
+                  description: Título do caso
+                  example: "Caso de identificação de vítima"
+                descricao:
+                  type: string
+                  description: Descrição do caso
+                  example: "Caso envolvendo a identificação de uma vítima de acidente."
+                responsavel:
+                  type: string
+                  description: ID do responsável pelo caso
+                  example: "60c72b2f9fd1a2b9b2a557a6"
+                dataCriacao:
+                  type: string
+                  format: date
+                  description: Data de criação do caso
+                  example: "2025-04-12"
       responses:
         '201':
-          description: Caso cadastrado com sucesso
+          description: Caso criado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  msg:
+                    type: string
+                    example: "Caso cadastrado com sucesso!"
+                  caso:
+                    $ref: '#/components/schemas/Case'
+        '400':
+          description: Erro na solicitação
 
-    get:
-      summary: Lista todos os casos
-      tags: [Casos]
-      responses:
-        '200':
-          description: Lista de casos
-
-  /api/cases/{caseId}/status:
-    patch:
-      summary: Atualiza o status de um caso
-      tags: [Casos]
+      /api/casos/{caseId}/status:
+      patch:
+      summary: Atualizar status do caso
+      description: Atualiza o status de um caso existente.
+      tags:
+        - Casos
       parameters:
         - in: path
           name: caseId
           required: true
+          description: ID do caso
+          schema:
+            type: string
+      requestBody:
+        description: Novo status do caso
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: ["Em andamento", "Finalizado", "Arquivado"]
+                  description: Novo status do caso
+                  example: "Finalizado"
+      responses:
+        '200':
+          description: Status do caso atualizado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Case'
+        '404':
+          description: Caso não encontrado
+        '400':
+          description: Erro na solicitação
+
+      /api/casos/{caseId}/finalizar:
+      patch:
+      summary: Finalizar caso
+      description: Finaliza um caso específico e altera o status para "Finalizado".
+      tags:
+        - Casos
+      parameters:
+        - in: path
+          name: caseId
+          required: true
+          description: ID do caso
           schema:
             type: string
       responses:
         '200':
-          description: Status atualizado com sucesso
+          description: Caso finalizado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  msg:
+                    type: string
+                    example: "Caso 'Caso de identificação de vítima' finalizado com sucesso."
+        '404':
+          description: Caso não encontrado
+        '500':
+          description: Erro ao finalizar caso
+
 
   # ROTAS DE EVIDÊNCIAS
-  /api/evidence/text:
-    post:
-      summary: Upload de evidência textual
-      tags: [Evidências]
+  /api/evidence:
+  post:
+      summary: Adiciona uma nova evidência (imagem ou texto)
+      tags:
+        - Evidências
+      parameters:
+        - name: caseId
+          in: path
+          required: true
+          description: ID do caso relacionado à evidência
+          schema:
+            type: string
+        - name: tipo
+          in: query
+          required: true
+          description: Tipo da evidência (imagem ou texto)
+          schema:
+            type: string
+            enum: [imagem, texto]
       requestBody:
         required: true
         content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - categoria
+                - vitima
+                - sexo
+                - estadoCorpo
+                - coletadoPor
+              properties:
+                categoria:
+                  type: string
+                vitima:
+                  type: string
+                  enum: [identificada, não identificada]
+                sexo:
+                  type: string
+                  enum: [masculino, feminino, indeterminado]
+                estadoCorpo:
+                  type: string
+                  enum: [inteiro, fragmentado, carbonizado, putrefacto, esqueleto]
+                lesoes:
+                  type: string
+                coletadoPor:
+                  type: string
+                file:
+                  type: string
+                  format: binary
+            encoding:
+              file:
+                contentType: image/*
+
           application/json:
             schema:
-              $ref: '#/components/schemas/TextEvidence'
-      responses:
-        '201':
-          description: Texto enviado
-
-  /api/evidence/image:
-    post:
-      summary: Upload de imagem como evidência
-      tags: [Evidências]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ImageEvidence'
-      responses:
-        '201':
-          description: Imagem enviada
-
-  /api/evidence/{caseId}:
-    post:
-      summary: Adiciona evidência a um caso
-      tags: [Evidências]
-      parameters:
-        - in: path
-          name: caseId
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Evidence'
-      responses:
-        '201':
-          description: Evidência adicionada
-
-  /api/evidence/coletar:
-    post:
-      summary: Coleta evidências
-      tags: [Evidências]
+              type: object
+              required:
+                - categoria
+                - vitima
+                - sexo
+                - estadoCorpo
+                - coletadoPor
+                - conteudo
+              properties:
+                categoria:
+                  type: string
+                vitima:
+                  type: string
+                  enum: [identificada, não identificada]
+                sexo:
+                  type: string
+                  enum: [masculino, feminino, indeterminado]
+                estadoCorpo:
+                  type: string
+                  enum: [inteiro, fragmentado, carbonizado, putrefacto, esqueleto]
+                lesoes:
+                  type: string
+                coletadoPor:
+                  type: string
+                conteudo:
+                  type: string
+                  example: "Descrição detalhada da evidência textual"
       responses:
         '200':
-          description: Evidências coletadas
+          description: Evidência adicionada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  msg:
+                    type: string
+                    example: Evidência adicionada com sucesso.
+                  evidence:
+                    $ref: '#/components/schemas/Evidence'
+        '400':
+          description: Requisição inválida ou dados ausentes
+        '401':
+          description: Não autorizado
+        '500':
+          description: Erro interno do servidor
+      security:
+        - bearerAuth: []
 
-  /api/evidence/analisar:
-    post:
-      summary: Analisa evidências
-      tags: [Evidências]
-      responses:
-        '200':
-          description: Evidências analisadas
 
-  /api/evidence/enviar:
-    get:
-      summary: Envia dados complementares ao caso
-      tags: [Evidências]
-      responses:
-        '200':
-          description: Dados enviados com sucesso
-
-  # ROTAS LAUDOS
-  /api/evidence/gerar-laudo/{caseId}:
-    post:
-      summary: Gera um laudo a partir das evidências
-      tags: [Laudos]
-      parameters:
-        - in: path
-          name: caseId
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Laudo gerado
-
-  /api/evidence/sign/{reportId}:
-    post:
-      summary: Assina digitalmente o laudo
-      tags: [Laudos]
-      parameters:
-        - in: path
-          name: reportId
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Laudo assinado
 
   # ROTAS DE RELATÓRIOS
-  /api/report:
-    post:
-      summary: Cria um relatório
-      tags: [Relatório]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Report'
-      responses:
-        '201':
-          description: Relatório criado
-
-    get:
-      summary: Lista todos relatórios
-      tags: [Relatório]
-      responses:
-        '200':
-          description: Lista de Relatórios
-
-  /api/report/generate/{caseId}:
-    post:
-      summary: Gera o relatório de um caso
-      tags: [Relatório]
+      /api/report:
+      get:
+      summary: Gera um relatório pericial para um caso
       parameters:
         - in: path
           name: caseId
           required: true
           schema:
             type: string
+          description: ID do caso para o qual o relatório será gerado
       responses:
-        '200':
-          description: Relatório gerado
+        200:
+          description: Relatório gerado com sucesso
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        404:
+          description: Caso ou relatório não encontrado
+        500:
+          description: Erro ao gerar o relatório
 
-  /api/report/pdf/{reportId}:
-    get:
-      summary: Exporta Relatório em PDF
-      tags: [Relatório]
+  /api/report/sign/{reportId}:
+    patch:
+      summary: Assina digitalmente um relatório
       parameters:
         - in: path
           name: reportId
           required: true
           schema:
             type: string
+          description: ID do relatório a ser assinado
       responses:
-        '200':
-          description: PDF gerado com sucesso
+        200:
+          description: Relatório assinado digitalmente com sucesso
+        404:
+          description: Relatório não encontrado
+        500:
+          description: Erro ao assinar o relatório
 
-  /api/report/{reportId}:
-    get:
-      summary: Busca Relatório por ID
-      tags: [Relatório]
-      parameters:
-        - in: path
-          name: reportId
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Detalhes do Relatório
 
+#COMPONENTES
 components:
   schemas:
-    Case:
+      Case:
       type: object
       properties:
+        _id:
+          type: string
+          description: ID do caso
         titulo:
           type: string
+          description: Título do caso
+          example: "Caso de identificação de vítima"
         descricao:
           type: string
+          description: Descrição do caso
+          example: "Caso envolvendo a identificação de uma vítima de acidente."
         status:
           type: string
-          enum: [Em andamento, Finalizado, Arquivado]
+          enum: ["Em andamento", "Finalizado", "Arquivado"]
+          description: Status do caso
+          example: "Em andamento"
         responsavel:
           type: string
-          format: uuid
+          description: ID do responsável pelo caso
+          example: "60c72b2f9fd1a2b9b2a557a6"
         evidencias:
           type: array
           items:
             type: string
-            format: uuid
+            description: ID de evidências relacionadas ao caso
         dataCriacao:
           type: string
-          format: date-time
+          format: date
+          description: Data de criação do caso
+          example: "2025-04-12"
 
-    ComparisonResult:
+
+      Evidence:
       type: object
       properties:
-        resultado:
+        _id:
           type: string
-        precisao:
-          type: number
-        analisadoPor:
-          type: string
-          format: uuid
-        casoRelacionado:
-          type: string
-          format: uuid
-        dataAnalise:
-          type: string
-          format: date-time
-
-    Evidence:
-      type: object
-      properties:
         tipo:
           type: string
-        dataColeta:
-          type: string
-          format: date
-        coletadoPor:
-          type: string
-          format: uuid
-        url:
-          type: string
-          format: uri
+          enum: [imagem, texto]
         categoria:
           type: string
-          enum:
-            - Radiografia Panorâmica
-            - Imagem Intraoral
-            - Radiografia Periapical
-            - Análise de Prontuário
-            - Outro
-
-    ImageEvidence:
-      allOf:
-        - $ref: '#/components/schemas/Evidence'
-        - type: object
-          properties:
-            imagemURL:
-              type: string
-              format: uri
-
-    TextEvidence:
-      allOf:
-        - $ref: '#/components/schemas/Evidence'
-        - type: object
-          properties:
-            conteudo:
-              type: string
-
-    Report:
-      type: object
-      properties:
-        titulo:
+        dataUpload:
+          type: string
+          format: date-time
+        vitima:
+          type: string
+          enum: [identificada, não identificada]
+        sexo:
+          type: string
+          enum: [masculino, feminino, indeterminado]
+        estadoCorpo:
+          type: string
+          enum: [inteiro, fragmentado, carbonizado, putrefacto, esqueleto]
+        lesoes:
           type: string
         conteudo:
           type: string
-        peritoResponsavel:
+        imagemURL:
           type: string
-          format: uuid
-        casoRelacionado:
+          format: uri
+        caso:
           type: string
-          format: uuid
-        dataCriacao:
+        coletadoPor:
+          type: string
+        laudo:
+          type: string
+
+
+      Report:
+      type: object
+      properties:
+        _id:
+          type: string
+          description: O ID do relatório
+        titulo:
+          type: string
+          description: O título do relatório
+        descricao:
+          type: string
+          description: A descrição do relatório
+        objetoPericia:
+          type: string
+          description: O objeto da perícia
+        analiseTecnica:
+          type: string
+          description: A análise técnica realizada
+        metodoUtilizado:
+          type: string
+          description: O método utilizado na perícia
+        destinatario:
+          type: string
+          description: O destinatário do relatório
+        materiaisUtilizados:
+          type: string
+          description: Materiais utilizados na perícia
+        examesRealizados:
+          type: string
+          description: Exames realizados durante a perícia
+        consideracoesTecnicoPericiais:
+          type: string
+          description: Considerações técnico-periciais no relatório
+        conclusaoTecnica:
+          type: string
+          description: A conclusão técnica do relatório
+        caso:
+          type: string
+          description: O ID do caso associado ao relatório
+        evidencias:
+          type: array
+          items:
+            type: string
+          description: Lista de IDs das evidências associadas ao relatório
+        criadoEm:
           type: string
           format: date-time
+          description: Data e hora de criação do relatório
+        assinadoDigitalmente:
+          type: boolean
+          description: Status se o relatório foi assinado digitalmente ou não
 
-    User:
+
+      User:
       type: object
       properties:
         nome:
@@ -372,7 +469,7 @@ components:
         cro:
           type: string
 
-    LoginRequest:
+      LoginRequest:
       type: object
       properties:
         email:

@@ -33,4 +33,32 @@ export const caseController = {
       next(err);
     }
   },
+
+  async finalizarCaso(req: Request, res: Response): Promise<void> {
+    try {
+      const { caseId } = req.params;
+  
+      const caso = await Case.findById(caseId);
+      if (!caso) {
+        res.status(404).json({ msg: "Caso não encontrado." });
+        return;
+      }
+  
+      caso.status = "Finalizado";
+      await caso.save();
+  
+      // Aqui pode adicionar lógica para "assinar digitalmente" se necessário
+      // Por exemplo: gerar uma hash, adicionar timestamp, ou apenas marcar como assinado
+      res.status(200).json({ msg: `Caso "${caso.titulo}" finalizado com sucesso.` });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ msg: "Erro ao finalizar caso." });
+    }
+  }
+
+  
+  //Atualizar Caso
+
+
+  //Deletar Caso
 };

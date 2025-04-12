@@ -5,10 +5,7 @@ import { Perfil } from "../models/UserModel";
 
 const router = Router();
 
-router.post("/", checkPermissions([Perfil.ADMIN, Perfil.PERITO]), reportController.createReport);
-router.post("/generate/:caseId", checkPermissions([Perfil.ADMIN, Perfil.PERITO]), reportController.generateReport);
-router.get("/pdf/:reportId", checkPermissions([Perfil.ADMIN, Perfil.PERITO]), reportController.exportarPDF);
-router.get("/", checkPermissions([Perfil.ADMIN, Perfil.PERITO]), reportController.listarRelatorios);
-router.get("/:reportId", checkPermissions([Perfil.ADMIN, Perfil.PERITO]), reportController.buscarPorId);
+router.post("/", checkPermissions([Perfil.ADMIN, Perfil.PERITO]), reportController.gerarRelatorioCaso);
+router.post("/sing/:reportId", checkPermissions([Perfil.ADMIN, Perfil.PERITO]), reportController.assinarDigitalmente);
 
 export default router;

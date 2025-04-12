@@ -1,22 +1,35 @@
-import mongoose, { Document, Schema } from "mongoose";
+import mongoose from "mongoose";
 
-interface IReport extends Document {
-  titulo: string;
-  conteudo: string;
-  peritoResponsavel: mongoose.Types.ObjectId;
-  casoRelacionado: mongoose.Types.ObjectId;
-  dataCriacao: Date;
-  assinaturaDigital(): void;
-  exportarPDF(): void;
-}
-
-const ReportSchema: Schema = new mongoose.Schema({
+const ReportSchema = new mongoose.Schema({
   titulo: { type: String, required: true },
-  conteudo: { type: String, required: true },
-  peritoResponsavel: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-  casoRelacionado: { type: mongoose.Schema.Types.ObjectId, ref: "Case", required: true },
-  dataCriacao: { type: Date, default: Date.now },
+  descricao: { type: String, required: true },
+  objetoPericia: { type: String, required: true },
+  analiseTecnica: { type: String, required: true },
+  metodoUtilizado: { type: String, required: true },
+  destinatario: { type: String, required: true },
+  materiaisUtilizados: { type: String, required: true },
+  examesRealizados: { type: String, required: true },
+  consideracoesTecnicoPericiais: { type: String, required: true },
+  conclusaoTecnica: { type: String, required: true },
+
+  caso: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Case",
+    required: true
+  },
+  
+  evidencias: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Evidence"
+  }],
+  criadoEm: {
+    type: Date,
+    default: Date.now
+  },
+  assinadoDigitalmente: {
+    type: Boolean,
+    default: false
+  }
 });
 
-const Report = mongoose.model<IReport>("Report", ReportSchema);
-export { Report, IReport };
+export const Report = mongoose.model("Report", ReportSchema);

@@ -8,9 +8,11 @@ interface IEvidence extends Document {
   sexo: "masculino" | "feminino" | "indeterminado";
   estadoCorpo: "inteiro" | "fragmentado" | "carbonizado" | "putrefacto" | "esqueleto";
   lesoes?: string;
-  caso: mongoose.Types.ObjectId; // referência ao Case
+  caso: mongoose.Types.ObjectId;
   coletadoPor: mongoose.Types.ObjectId;
-  imagemURL?: string; // URL da imagem no Cloudinary
+  conteudo?: string; //se for texto
+  imagemURL?: string; //se for imagem
+  laudo?: string;
 }
 
 const EvidenceSchema = new Schema<IEvidence>({
@@ -27,8 +29,11 @@ const EvidenceSchema = new Schema<IEvidence>({
   lesoes: { type: String },
   caso: { type: mongoose.Schema.Types.ObjectId, ref: "Case", required: true },
   coletadoPor: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-  imagemURL: { type: String } // Armazena o link da imagem hospedada no Cloudinary
+  conteudo : { type: String },
+  imagemURL: { type: String },
+  laudo: { type: String }
 });
+
 
 const Evidence = mongoose.model<IEvidence>("Evidence", EvidenceSchema);
 export { Evidence, IEvidence };
