@@ -1,7 +1,7 @@
 import { NextFunction, Response, Request } from "express";
 import cloudinary from "../config/cloudinary";
 import { Evidence } from "../models/EvidenceModel";
-import { Case } from "../models/CaseModel"; // importa o model do caso
+import { Case } from "../models/CaseModel"; // Importando o modelo de "Case"
 
 export const evidenceController = {
   // Adicionar evidência
@@ -17,7 +17,8 @@ export const evidenceController = {
         return res.status(404).json({ msg: "Caso não encontrado com esse título." });
       }
 
-      const caseId = foundCase._id;
+      const caseId = foundCase._id; // Usando o ID do caso encontrado
+
       let evidence;
 
       if (tipo === "imagem" && req.file?.path) {
@@ -34,7 +35,6 @@ export const evidenceController = {
           sexo,
           estadoCorpo,
           lesoes,
-          caso: caseId,
           coletadoPor,
           imagemURL: result.secure_url
         });
@@ -48,7 +48,6 @@ export const evidenceController = {
           sexo,
           estadoCorpo,
           lesoes,
-          caso: caseId,
           coletadoPor,
           conteudo
         });
