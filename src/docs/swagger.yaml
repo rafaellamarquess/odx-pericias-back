@@ -78,6 +78,10 @@ paths:
             schema:
               type: object
               properties:
+                caso:
+                  type: string
+                  description: Título do caso ao qual a evidência pertence
+                  example: "Identificação de vítima no litoral"
                 titulo:
                   type: string
                   example: "Identificação de vítima no litoral"
@@ -87,7 +91,7 @@ paths:
                 responsavel:
                   type: string
                   format: objectId
-                  example: "607c72ef4b1b2f0015f8e234"
+                  example: "Juliana Costa"
                 dataCriacao:
                   type: string
                   format: date
