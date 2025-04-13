@@ -216,7 +216,7 @@ paths:
           multipart/form-data:
             schema:
               type: object
-              required: [categoria, vitima, sexo, estadoCorpo, coletadoPor]
+              required: [caso, categoria, vitima, sexo, estadoCorpo, coletadoPor]
               properties:
                 categoria:
                   type: string
@@ -245,7 +245,7 @@ paths:
           application/json:
             schema:
               type: object
-              required: [categoria, vitima, sexo, estadoCorpo, coletadoPor, conteudo]
+              required: [caso, categoria, vitima, sexo, estadoCorpo, coletadoPor, conteudo]
               properties:
                 categoria:
                   type: string
