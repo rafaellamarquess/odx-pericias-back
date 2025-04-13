@@ -15,7 +15,7 @@ paths:
     post:
       summary: Registra um novo usuário
       tags: [Auth]
-      security: []  # sem autenticação
+      security: []
       requestBody:
         required: true
         content:
@@ -66,46 +66,75 @@ paths:
           description: Lista de usuários
 
   /api/cases:
-    post:
-      summary: Criar um novo caso
-      description: Cria um novo caso com as informações fornecidas.
-      tags: [Casos]
-      requestBody:
-        description: Dados do novo caso a ser criado
-        required: true
+  post:
+    summary: Criar um novo caso
+    description: Cria um novo caso com as informações fornecidas.
+    tags: [Casos]
+    requestBody:
+      description: Dados do novo caso a ser criado
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              titulo:
+                type: string
+                example: "Identificação de vítima no litoral"
+              descricao:
+                type: string
+                example: "Caso envolvendo a identificação de um corpo encontrado em uma praia."
+              responsavel:
+                type: string
+                format: objectId
+                example: "607c72ef4b1b2f0015f8e234"  # Exemplo de um ObjectId de usuário
+              dataCriacao:
+                type: string
+                format: date
+                example: "2025-04-12"
+    responses:
+      '201':
+        description: Caso criado com sucesso
         content:
           application/json:
             schema:
               type: object
               properties:
-                titulo:
+                msg:
                   type: string
-                  example: "Identificação de vítima no litoral"
-                descricao:
+                  example: "Caso cadastrado com sucesso!"
+                caso:
+                  $ref: '#/components/schemas/Case'
+      '400':
+        description: Erro na solicitação
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                msg:
                   type: string
-                  example: "Caso envolvendo a identificação de um corpo encontrado em uma praia."
-                responsavel:
+                  example: "Dados inválidos ou incompletos."
+      '401':
+        description: Usuário não autenticado
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                msg:
                   type: string
-                  example: "Julinana Costa"
-                dataCriacao:
+                  example: "Usuário não autenticado."
+      '403':
+        description: Permissão negada
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                msg:
                   type: string
-                  format: date
-                  example: "2025-04-12"
-      responses:
-        '201':
-          description: Caso criado com sucesso
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  msg:
-                    type: string
-                    example: "Caso cadastrado com sucesso!"
-                  caso:
-                    $ref: '#/components/schemas/Case'
-        '400':
-          description: Erro na solicitação
+                  example: "Apenas usuários com perfil 'Admin' ou 'Perito' podem cadastrar casos."
 
   /api/cases/{caseId}/status:
     patch:
@@ -306,8 +335,6 @@ components:
     Case:
       type: object
       properties:
-        _id:
-          type: string
         titulo:
           type: string
           example: "Caso de identificação de vítima"
@@ -317,16 +344,14 @@ components:
         status:
           type: string
           enum: [Em andamento, Finalizado, Arquivado]
+          example: "Em andamento"
         responsavel:
           type: string
-          example: "PJuliana Costa"
-        evidencias:
-          type: array
-          items:
-            type: string
+          example: "Juliana Costa"
         dataCriacao:
           type: string
           format: date
+          example: "2025-04-12"
 
     Evidence:
       type: object
