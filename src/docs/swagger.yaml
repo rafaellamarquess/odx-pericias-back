@@ -139,14 +139,13 @@ paths:
                   msg:
                     type: string
                     example: "Apenas usuários com perfil 'Admin' ou 'Perito' podem cadastrar casos."
-  
-    /api/cases/case-titles:
+
+  /api/cases/case-titles:
     get:
       summary: Retorna todos os títulos dos casos cadastrados
-      tags:
-        - Casos
+      tags: [Casos]
       security:
-        - bearerAuth: []  # Se você estiver usando autenticação JWT
+        - bearerAuth: []
       responses:
         '200':
           description: Lista de títulos de casos
@@ -226,87 +225,87 @@ paths:
         '500':
           description: Erro ao finalizar caso
 
-/api/evidence:
-  post:
-    summary: Adiciona uma nova evidência
-    tags: [Evidências]
-    parameters:
-      - name: caseTitle
-        in: query
-        required: true
-        schema:
-          type: string
-          enum: [Identificação de vítima no litoral, Identificação de vítima em acidente de carro]
-      - name: tipo
-        in: query
-        required: true
-        schema:
-          type: string
-          enum: [imagem, texto]
-    requestBody:
-      required: true
-      content:
-        multipart/form-data:
+  /api/evidence:
+    post:
+      summary: Adiciona uma nova evidência
+      tags: [Evidências]
+      parameters:
+        - name: caseTitle
+          in: query
+          required: true
           schema:
-            type: object
-            required: [caso, categoria, vitima, sexo, estadoCorpo, coletadoPor]
-            properties:
-              caso:
-                type: string
-                example: "Identificação de vítima no litoral"
-              categoria:
-                type: string
-                example: "Radiografia Panorâmica"
-              vitima:
-                type: string
-                enum: [identificada, não identificada]
-              sexo:
-                type: string
-                enum: [masculino, feminino, indeterminado]
-              estadoCorpo:
-                type: string
-                enum: [inteiro, fragmentado, carbonizado, putrefacto, esqueleto]
-              lesoes:
-                type: string
-                example: "Fraturas múltiplas na mandíbula"
-              coletadoPor:
-                type: string
-                example: "Juliana Costa"
+            type: string
+            enum: [Identificação de vítima no litoral, Identificação de vítima em acidente de carro]
+        - name: tipo
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [imagem, texto]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [caso, categoria, vitima, sexo, estadoCorpo, coletadoPor]
+              properties:
+                caso:
+                  type: string
+                  example: "Identificação de vítima no litoral"
+                categoria:
+                  type: string
+                  example: "Radiografia Panorâmica"
+                vitima:
+                  type: string
+                  enum: [identificada, não identificada]
+                sexo:
+                  type: string
+                  enum: [masculino, feminino, indeterminado]
+                estadoCorpo:
+                  type: string
+                  enum: [inteiro, fragmentado, carbonizado, putrefacto, esqueleto]
+                lesoes:
+                  type: string
+                  example: "Fraturas múltiplas na mandíbula"
+                coletadoPor:
+                  type: string
+                  example: "Juliana Costa"
+                file:
+                  type: string
+                  format: binary
+            encoding:
               file:
-                type: string
-                format: binary
-          encoding:
-            file:
-              contentType: image/*
-        application/json:
-          schema:
-            type: object
-            required: [caso, categoria, vitima, sexo, estadoCorpo, coletadoPor, conteudo]
-            properties:
-              caso:
-                type: string
-                example: "Identificação de vítima no litoral"
-              categoria:
-                type: string
-                example: "Análise textual de registro odontológico"
-              vitima:
-                type: string
-                enum: [identificada, não identificada]
-              sexo:
-                type: string
-                enum: [masculino, feminino, indeterminado]
-              estadoCorpo:
-                type: string
-                enum: [inteiro, fragmentado, carbonizado, putrefacto, esqueleto]
-              lesoes:
-                type: string
-                example: "Lesões ósseas relatadas em documentos anteriores"
-              coletadoPor:
-                type: string
-                example: "Juliana Costa"
-              conteudo:
-                type: string
-                example: "Descrição detalhada da evidência textual"
+                contentType: image/*
+          application/json:
+            schema:
+              type: object
+              required: [caso, categoria, vitima, sexo, estadoCorpo, coletadoPor, conteudo]
+              properties:
+                caso:
+                  type: string
+                  example: "Identificação de vítima no litoral"
+                categoria:
+                  type: string
+                  example: "Análise textual de registro odontológico"
+                vitima:
+                  type: string
+                  enum: [identificada, não identificada]
+                sexo:
+                  type: string
+                  enum: [masculino, feminino, indeterminado]
+                estadoCorpo:
+                  type: string
+                  enum: [inteiro, fragmentado, carbonizado, putrefacto, esqueleto]
+                lesoes:
+                  type: string
+                  example: "Lesões ósseas relatadas em documentos anteriores"
+                coletadoPor:
+                  type: string
+                  example: "Juliana Costa"
+                conteudo:
+                  type: string
+                  example: "Descrição detalhada da evidência textual"
       responses:
         '200':
           description: Evidência adicionada
