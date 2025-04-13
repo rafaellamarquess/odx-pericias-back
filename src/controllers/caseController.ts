@@ -35,6 +35,16 @@ export const caseController = {
       }
     },
 
+    // Listar apenas os títulos dos casos (para dropdown)
+async getTitulosDosCasos(req: Request, res: Response, next: NextFunction) {
+  try {
+    const titulos = await Case.find({}, "titulo"); // Busca apenas o campo 'titulo'
+    res.status(200).json(titulos);
+  } catch (err) {
+    next(err);
+  }
+},
+
   async finalizarCaso(req: Request, res: Response): Promise<void> {
     try {
       const { caseId } = req.params;

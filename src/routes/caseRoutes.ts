@@ -8,6 +8,9 @@ const router = Router();
 router.post("/", checkPermissions([Perfil.ADMIN, Perfil.PERITO]), caseController.createCase);
 router.patch("/:caseId/status", checkPermissions([Perfil.ADMIN, Perfil.PERITO]), caseController.updateStatus);
 router.patch("/:caseId/finalizar", checkPermissions([Perfil.ADMIN, Perfil.PERITO]), caseController.finalizarCaso);
+router.get("/case-titles", checkPermissions([Perfil.ADMIN, Perfil.PERITO]), caseController.getTitulosDosCasos);
+
+// router.get("/", checkPermissions([Perfil.ADMIN, Perfil.PERITO]), caseController.getAllCases);
 // router.put("/:caseId", checkPermissions([Perfil.ADMIN, Perfil.PERITO]), caseController.updateCase);
 // router.delete("/:caseId", checkPermissions([Perfil.ADMIN, Perfil.PERITO]), caseController.deleteCase);
 
