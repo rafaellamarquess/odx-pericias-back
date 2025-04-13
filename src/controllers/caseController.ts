@@ -19,6 +19,11 @@ export const caseController = {
         }
   
         const { titulo, descricao, responsavel, dataCriacao } = req.body;
+         // Validação básica
+         if (!titulo || !descricao || !responsavel) {
+          res.status(400).json({ msg: "Título, descrição e responsável são obrigatórios." });
+          return;
+      }
   
         const newCase = new Case({
           titulo,
@@ -68,7 +73,49 @@ export const caseController = {
     },
   
   //Atualizar Caso
+  async updateCase(req: Request, res: Response, next: NextFunction) {
+    try {
+        const { caseId } = req.params;
+        const { titulo, descricao, responsavel } = req.body;
+  
+        const updated = await Case.findByIdAndUpdate(
+            caseId,
+            { titulo, descricao, responsavel },
+            { new: true }
+        );
+        
+        if (!updated) {
+            res.status(404).json({ msg: "Caso não encontrado." });
+            return;
+        }
+        
+        res.status(200).json({ msg: "Caso atualizado com sucesso!", caso: updated });
+    } catch (err) {
+        next(err);
+    }
+  },
+  
+  // Deletar Caso
+  async deleteCase(req: CustomRequest, res: Response, next: NextFunction) {
+    try {
+        const user = req.user;
+        if (!user || user.perfil !== "Admin") {
+            res.status(403).json({ msg: "Apenas administradores podem deletar casos." });
+            return;
+        }
+  
+        const { caseId } = req.params;
+        const deleted = await Case.findByIdAndDelete(caseId);
+        
+        if (!deleted) {
+            res.status(404).json({ msg: "Caso não encontrado." });
+            return;
+        }
+        
+        res.status(200).json({ msg: "Caso deletado com sucesso!" });
+    } catch (err) {
+        next(err);
+    }
+  }
 
-
-  //Deletar Caso
 };
