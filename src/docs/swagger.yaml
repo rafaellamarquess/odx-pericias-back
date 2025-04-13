@@ -335,6 +335,7 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+
   schemas:
     Case:
       type: object
@@ -397,8 +398,6 @@ components:
     Report:
       type: object
       properties:
-        _id:
-          type: string
         titulo:
           type: string
         descricao:
