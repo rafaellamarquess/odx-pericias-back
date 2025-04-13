@@ -30,7 +30,7 @@ paths:
     post:
       summary: Autentica um usuário
       tags: [Auth]
-      security: []  # sem autenticação
+      security: []
       requestBody:
         required: true
         content:
@@ -66,75 +66,75 @@ paths:
           description: Lista de usuários
 
   /api/cases:
-  post:
-    summary: Criar um novo caso
-    description: Cria um novo caso com as informações fornecidas.
-    tags: [Casos]
-    requestBody:
-      description: Dados do novo caso a ser criado
-      required: true
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              titulo:
-                type: string
-                example: "Identificação de vítima no litoral"
-              descricao:
-                type: string
-                example: "Caso envolvendo a identificação de um corpo encontrado em uma praia."
-              responsavel:
-                type: string
-                format: objectId
-                example: "607c72ef4b1b2f0015f8e234"  # Exemplo de um ObjectId de usuário
-              dataCriacao:
-                type: string
-                format: date
-                example: "2025-04-12"
-    responses:
-      '201':
-        description: Caso criado com sucesso
+    post:
+      summary: Criar um novo caso
+      description: Cria um novo caso com as informações fornecidas.
+      tags: [Casos]
+      requestBody:
+        description: Dados do novo caso a ser criado
+        required: true
         content:
           application/json:
             schema:
               type: object
               properties:
-                msg:
+                titulo:
                   type: string
-                  example: "Caso cadastrado com sucesso!"
-                caso:
-                  $ref: '#/components/schemas/Case'
-      '400':
-        description: Erro na solicitação
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                msg:
+                  example: "Identificação de vítima no litoral"
+                descricao:
                   type: string
-                  example: "Dados inválidos ou incompletos."
-      '401':
-        description: Usuário não autenticado
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                msg:
+                  example: "Caso envolvendo a identificação de um corpo encontrado em uma praia."
+                responsavel:
                   type: string
-                  example: "Usuário não autenticado."
-      '403':
-        description: Permissão negada
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                msg:
+                  format: objectId
+                  example: "607c72ef4b1b2f0015f8e234"
+                dataCriacao:
                   type: string
-                  example: "Apenas usuários com perfil 'Admin' ou 'Perito' podem cadastrar casos."
+                  format: date
+                  example: "2025-04-12"
+      responses:
+        '201':
+          description: Caso criado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  msg:
+                    type: string
+                    example: "Caso cadastrado com sucesso!"
+                  caso:
+                    $ref: '#/components/schemas/Case'
+        '400':
+          description: Erro na solicitação
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  msg:
+                    type: string
+                    example: "Dados inválidos ou incompletos."
+        '401':
+          description: Usuário não autenticado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  msg:
+                    type: string
+                    example: "Usuário não autenticado."
+        '403':
+          description: Permissão negada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  msg:
+                    type: string
+                    example: "Apenas usuários com perfil 'Admin' ou 'Perito' podem cadastrar casos."
 
   /api/cases/{caseId}/status:
     patch:
@@ -231,7 +231,7 @@ paths:
                   example: "Fraturas múltiplas na mandíbula"
                 coletadoPor:
                   type: string
-                  example: "Julinana Costa"
+                  example: "Juliana Costa"
                 file:
                   type: string
                   format: binary
