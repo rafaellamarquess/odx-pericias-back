@@ -1,7 +1,7 @@
 import mongoose, { Document, Schema } from "mongoose";
 
 interface IEvidence extends Document {
-  caso: string; 
+  caso: IEvidence; 
   tipo: "imagem" | "texto";
   categoria: string;
   dataUpload: Date;
@@ -16,7 +16,7 @@ interface IEvidence extends Document {
 }
 
 const EvidenceSchema = new Schema<IEvidence>({
-  caso: { type: String, required: true },  
+  caso: { type: mongoose.Schema.Types.ObjectId, ref: "Case", required: true },  
   tipo: { type: String, enum: ["imagem", "texto"], required: true },
   categoria: { type: String, required: true },
   dataUpload: { type: Date, default: Date.now },
