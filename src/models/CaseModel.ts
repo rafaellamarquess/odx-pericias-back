@@ -7,7 +7,6 @@ interface ICase extends Document {
   status: "Em andamento" | "Finalizado" | "Arquivado";
   responsavel: string;
   dataCriacao: Date;
-  addEvidence(evidenceId: mongoose.Types.ObjectId): void;
   updateStatus(status: string): void;
 }
 

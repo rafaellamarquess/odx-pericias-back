@@ -4,6 +4,7 @@ import { Evidence } from "../models/EvidenceModel";
 import { Case } from "../models/CaseModel"; // Importando o modelo de "Case"
 
 export const evidenceController = {
+
   // Adicionar evidência
   async addEvidence(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -63,4 +64,12 @@ export const evidenceController = {
       next(err);
     }
   }
+
+  //Exibir evidências
+
+  //Deletar evidência
+
+  // Listar evidências
+
+  //Filtros
 };

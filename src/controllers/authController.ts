@@ -4,6 +4,8 @@ import User from "../models/UserModel";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 
+
+// Função para registrar um novo usuário
 export const register: express.RequestHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { nome, email, senha, perfil, rg, cro } = req.body;
@@ -33,6 +35,7 @@ export const register: express.RequestHandler = async (req: Request, res: Respon
   }
 };
 
+// Função para login
 export const login: express.RequestHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { email, senha, rg, cro } = req.body;
@@ -84,4 +87,9 @@ export const listUsers = async (req: Request, res: Response, next: NextFunction)
   } catch (error) {
     next(error); 
   }
+
+
+  //Editar Usuário
+
+  // Deletar Usuário
 };

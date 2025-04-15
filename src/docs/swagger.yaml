@@ -229,6 +229,8 @@ paths:
     post:
       summary: Adiciona uma nova evidência
       tags: [Evidências]
+      security:
+        - bearerAuth: []
       parameters:
         - name: caseTitle
           in: query
