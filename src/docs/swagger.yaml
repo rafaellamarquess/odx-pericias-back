@@ -75,7 +75,7 @@ paths:
         '200':
           description: Informações atualizadas com sucesso
 
-  /api/user/create-user:
+  /api/user:
     post:
       summary: Cria um novo usuário (somente Admin)
       tags: [User]
@@ -91,7 +91,7 @@ paths:
         '201':
           description: Usuário criado com sucesso
 
-  /api/user/list-users:
+  /api/user:
     get:
       summary: Lista todos os usuários
       tags: [User]
