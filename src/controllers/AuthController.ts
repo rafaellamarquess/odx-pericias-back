@@ -1,39 +1,9 @@
 import { Request, Response, NextFunction } from "express";
 import express from "express";
-import User from "../models/UserModel";
+import User, { IUser } from "../models/UserModel";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { CustomRequest } from "../types/CustomRequest";
-
-// Função para registrar um novo usuário
-export const register: express.RequestHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  try {
-    const { nome, email, senha, perfil, rg, cro } = req.body;
-
-    if (!rg) {
-      res.status(400).json({ msg: "RG é obrigatório" });
-      return;
-    }
-
-    if (perfil === "Perito" && !cro) {
-      res.status(400).json({ msg: "Cro é obrigatório para o perfil Perito" });
-      return;
-    }
-
-    const usuarioExiste = await User.findOne({ email });
-
-    if (usuarioExiste) {
-      res.status(400).json({ msg: "Usuário já existe" });
-      return;
-    }
-
-    const novoUsuario = await User.create({ nome, email, senha, perfil, rg, cro });
-
-    res.status(201).json({ msg: "Usuário cadastrado com sucesso!", usuario: novoUsuario });
-  } catch (err) {
-    next(err);
-  }
-};
 
 // Função para login
 export const login: express.RequestHandler = async ( req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -73,14 +43,29 @@ export const logout: express.RequestHandler = (req: Request, res: Response): voi
 
 
 // Função para retornar os dados do usuário logado
-export const getLoggedUser = async (req: CustomRequest, res: Response): Promise<void> => {
-  if (!req.user) {
-    res.status(401).json({ message: "Não autorizado." });
-    return;
-  }
+export const getLoggedUser = async (req: CustomRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const user = req.user as IUser; // Assert that user is of type IUser
+    if (!user || typeof user._id !== "string") {
+      res.status(404).json({ msg: "Usuário não encontrado" });
+      return;
+    }
+    if (!user) {
+      res.status(404).json({ msg: "Usuário não encontrado" });
+      return;
+    }
 
-  res.status(200).json(req.user);
+    res.status(200).json({
+      id: user._id.toString(),
+      nome: user.nome,
+      cro: user.cro || "",
+      tipo: user.perfil.toLowerCase(),
+    });
+  } catch (err: unknown) {
+    next(err);
+  }
 };
+
 
 
 //Redefinir senha ou email

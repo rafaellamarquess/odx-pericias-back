@@ -1,12 +1,14 @@
 import express from "express";
-import { deleteUser, editUser, listUsers } from "../controllers/UserController";
+import { deleteUser, editUser, listUsers, createUser } from "../controllers/UserController";
 import { authenticateToken } from "../middlewares/authMiddleware";
 import { checkPermissions } from "../middlewares/permissionsMiddleware";
 import { Perfil } from "../models/UserModel";
 
 const router = express.Router();
 
-router.get("/userId", listUsers);
+
+router.post("/", authenticateToken, checkPermissions([Perfil.ADMIN]), createUser);
+router.get("/",authenticateToken, checkPermissions([Perfil.ADMIN]), listUsers);
 router.put("/:userId", authenticateToken, checkPermissions([Perfil.ADMIN]), editUser);
 router.delete("/:userId", authenticateToken, checkPermissions([Perfil.ADMIN]), deleteUser);
 

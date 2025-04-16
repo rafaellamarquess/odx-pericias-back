@@ -11,21 +11,6 @@ security:
   - BearerAuth: []
 
 paths:
-  /api/auth/register:
-    post:
-      summary: Registra um novo usuário
-      tags: [Auth]
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/User'
-      responses:
-        '201':
-          description: Usuário criado com sucesso
-
   /api/auth/login:
     post:
       summary: Autentica um usuário
@@ -89,6 +74,22 @@ paths:
       responses:
         '200':
           description: Informações atualizadas com sucesso
+
+  /api/user/create-user:
+    post:
+      summary: Cria um novo usuário (somente Admin)
+      tags: [User]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '201':
+          description: Usuário criado com sucesso
 
   /api/user/list-users:
     get:
@@ -303,7 +304,6 @@ paths:
         '500':
           description: Erro ao assinar o relatório
 
-
 components:
   securitySchemes:
     BearerAuth:
@@ -418,25 +418,15 @@ components:
         senha:
           type: string
           example: "senha"
-        perfil:
+        tipoUsuario:
           type: string
           enum: [Admin, Perito, Assistente]
-          example: "Perito"
-        rg:
-          type: string
-          example: "123456789"
-        cro:
-          type: string
-          example: "12345"
+          example: "Admin"
 
     LoginRequest:
       type: object
-      required: [email, senha]
       properties:
         email:
           type: string
-          format: email
-          example: roberta.silva@email.com
         senha:
           type: string
-          example: "senha"
