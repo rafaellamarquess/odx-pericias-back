@@ -137,218 +137,104 @@ paths:
         '200':
           description: Usuário deletado com sucesso
 
-/api/cases:
-  post:
-    summary: Criar um novo caso
-    description: Cria um novo caso com as informações fornecidas.
-    tags: [Casos]
-    requestBody:
-      description: Dados do novo caso a ser criado
-      required: true
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              caso:
-                type: string
-                description: Título do caso ao qual a evidência pertence
-                example: "Identificação de vítima no litoral"
-              titulo:
-                type: string
-                example: "Identificação de vítima no litoral"
-              descricao:
-                type: string
-                example: "Caso envolvendo a identificação de um corpo encontrado em uma praia."
-              responsavel:
-                type: string
-                format: objectId
-                example: "Juliana Costa"
-              dataCriacao:
-                type: string
-                format: date
-                example: "2025-04-12"
-    responses:
-      '201':
-        description: Caso criado com sucesso
+  /api/cases:
+    post:
+      summary: Criar um novo caso
+      description: Cria um novo caso com as informações fornecidas.
+      tags: [Casos]
+      requestBody:
+        description: Dados do novo caso a ser criado
+        required: true
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                msg:
-                  type: string
-                  example: "Caso cadastrado com sucesso!"
-                caso:
-                  $ref: '#/components/schemas/Case'
-      '400':
-        description: Erro na solicitação
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                msg:
-                  type: string
-                  example: "Dados inválidos ou incompletos."
-      '401':
-        description: Usuário não autenticado
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                msg:
-                  type: string
-                  example: "Usuário não autenticado."
-      '403':
-        description: Permissão negada
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                msg:
-                  type: string
-                  example: "Apenas usuários com perfil 'Admin' ou 'Perito' podem cadastrar casos."
-
-  get:
-    summary: Listar todos os casos
-    description: Retorna uma lista de todos os casos cadastrados. Pode aceitar parâmetros de busca por query string.
-    tags: [Casos]
-    parameters:
-      - in: query
-        name: titulo
-        schema:
-          type: string
-        description: Filtrar casos pelo título
-      - in: query
-        name: responsavel
-        schema:
-          type: string
-        description: Filtrar casos pelo nome do responsável
-      - in: query
-        name: dataCriacao
-        schema:
-          type: string
-          format: date
-        description: Filtrar casos por data de criação
-    responses:
-      '200':
-        description: Lista de casos retornada com sucesso
-        content:
-          application/json:
-            schema:
-              type: array
-              items:
+              $ref: '#/components/schemas/CaseRequest'
+      responses:
+        '201':
+          description: Caso criado com sucesso
+          content:
+            application/json:
+              schema:
                 $ref: '#/components/schemas/Case'
-      '401':
-        description: Usuário não autenticado
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                msg:
-                  type: string
-                  example: "Usuário não autenticado."
-      '403':
-        description: Permissão negada
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                msg:
-                  type: string
-                  example: "Apenas usuários com perfil 'Admin' ou 'Perito' podem visualizar os casos."
+        '400':
+          description: Erro na solicitação
+        '401':
+          description: Usuário não autenticado
+        '403':
+          description: Permissão negada
 
-/api/cases/case-title:
-  get:
-    summary: Retorna todos os títulos dos casos cadastrados
-    tags: [Cases]
-    security:
-      - bearerAuth: []
-    responses:
-      '200':
-        description: Lista de títulos de casos
-        content:
-          application/json:
-            schema:
-              type: array
-              items:
-                type: string
-              example:
-                - Identificação de vítima no litoral
-                - Análise de arcada dentária carbonizada
-                - Reconhecimento facial por imagem
-      '401':
-        description: Não autorizado – token não fornecido ou inválido
-      '403':
-        description: Acesso negado – apenas Admins ou Peritos
-      '500':
-        description: Erro interno do servidor
-
-/api/cases/{caseId}:
-  patch:
-    summary: Atualizar caso
-    tags: [Cases]
-    parameters:
-      - in: path
-        name: caseId
-        required: true
-        schema:
-          type: string
-    requestBody:
-      required: true
-      content:
-        application/json:
+    get:
+      summary: Listar todos os casos
+      description: Retorna uma lista de todos os casos cadastrados.
+      tags: [Casos]
+      parameters:
+        - in: query
+          name: titulo
           schema:
-            type: object
-            additionalProperties: true
-    responses:
-      '200':
-        description: Caso atualizado com sucesso
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                msg:
-                  type: string
-                  example: "Caso atualizado com sucesso."
-                caso:
-                  type: object
-      '404':
-        description: Caso não encontrado
-      '500':
-        description: Erro ao atualizar caso
+            type: string
+        - in: query
+          name: responsavel
+          schema:
+            type: string
+        - in: query
+          name: dataCriacao
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Lista de casos retornada com sucesso
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Case'
+        '401':
+          description: Usuário não autenticado
+        '403':
+          description: Permissão negada
 
-  delete:
-    summary: Deletar caso
-    tags: [Cases]
-    parameters:
-      - in: path
-        name: caseId
+  /api/cases/{caseId}:
+    patch:
+      summary: Atualizar caso
+      tags: [Cases]
+      parameters:
+        - in: path
+          name: caseId
+          required: true
+          schema:
+            type: string
+      requestBody:
         required: true
-        schema:
-          type: string
-    responses:
-      '200':
-        description: Caso deletado com sucesso
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                msg:
-                  type: string
-                  example: "Caso 'Identificação de vítima no litoral' deletado com sucesso."
-      '404':
-        description: Caso não encontrado
-      '500':
-        description: Erro ao deletar caso
+              $ref: '#/components/schemas/CaseUpdate'
+      responses:
+        '200':
+          description: Caso atualizado com sucesso
+        '404':
+          description: Caso não encontrado
+        '500':
+          description: Erro ao atualizar caso
 
+    delete:
+      summary: Deletar caso
+      tags: [Cases]
+      parameters:
+        - in: path
+          name: caseId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Caso deletado com sucesso
+        '404':
+          description: Caso não encontrado
+        '500':
+          description: Erro ao deletar caso
 
   /api/evidence:
     post:
@@ -356,96 +242,19 @@ paths:
       tags: [Evidências]
       security:
         - bearerAuth: []
-      parameters:
-        - name: caseTitle
-          in: query
-          required: true
-          schema:
-            type: string
-            enum: [Identificação de vítima no litoral, Identificação de vítima em acidente de carro]
-        - name: tipo
-          in: query
-          required: true
-          schema:
-            type: string
-            enum: [imagem, texto]
       requestBody:
         required: true
         content:
           multipart/form-data:
             schema:
-              type: object
-              required: [caso, categoria, vitima, sexo, estadoCorpo, coletadoPor]
-              properties:
-                caso:
-                  type: string
-                  example: "Identificação de vítima no litoral"
-                categoria:
-                  type: string
-                  example: "Radiografia Panorâmica"
-                vitima:
-                  type: string
-                  enum: [identificada, não identificada]
-                sexo:
-                  type: string
-                  enum: [masculino, feminino, indeterminado]
-                estadoCorpo:
-                  type: string
-                  enum: [inteiro, fragmentado, carbonizado, putrefacto, esqueleto]
-                lesoes:
-                  type: string
-                  example: "Fraturas múltiplas na mandíbula"
-                coletadoPor:
-                  type: string
-                  example: "Juliana Costa"
-                file:
-                  type: string
-                  format: binary
-            encoding:
-              file:
-                contentType: image/*
-          application/json:
-            schema:
-              type: object
-              required: [caso, categoria, vitima, sexo, estadoCorpo, coletadoPor, conteudo]
-              properties:
-                caso:
-                  type: string
-                  example: "Identificação de vítima no litoral"
-                categoria:
-                  type: string
-                  example: "Análise textual de registro odontológico"
-                vitima:
-                  type: string
-                  enum: [identificada, não identificada]
-                sexo:
-                  type: string
-                  enum: [masculino, feminino, indeterminado]
-                estadoCorpo:
-                  type: string
-                  enum: [inteiro, fragmentado, carbonizado, putrefacto, esqueleto]
-                lesoes:
-                  type: string
-                  example: "Lesões ósseas relatadas em documentos anteriores"
-                coletadoPor:
-                  type: string
-                  example: "Juliana Costa"
-                conteudo:
-                  type: string
-                  example: "Descrição detalhada da evidência textual"
+              $ref: '#/components/schemas/EvidenceRequest'
       responses:
         '200':
           description: Evidência adicionada
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  msg:
-                    type: string
-                    example: "Evidência adicionada com sucesso."
-                  evidence:
-                    $ref: '#/components/schemas/Evidence'
+                $ref: '#/components/schemas/Evidence'
         '400':
           description: Dados inválidos
         '401':
@@ -493,6 +302,7 @@ paths:
           description: Relatório não encontrado
         '500':
           description: Erro ao assinar o relatório
+          
 
 components:
   securitySchemes:
