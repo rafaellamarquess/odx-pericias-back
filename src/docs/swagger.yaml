@@ -141,7 +141,7 @@ paths:
     post:
       summary: Criar um novo caso
       description: Cria um novo caso com as informações fornecidas.
-      tags: [Casos]
+      tags: [Cases]
       requestBody:
         description: Dados do novo caso a ser criado
         required: true
@@ -166,7 +166,7 @@ paths:
     get:
       summary: Listar todos os casos
       description: Retorna uma lista de todos os casos cadastrados.
-      tags: [Casos]
+      tags: [Cases]
       parameters:
         - in: query
           name: titulo
