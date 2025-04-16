@@ -36,39 +36,31 @@ export const register: express.RequestHandler = async (req: Request, res: Respon
 };
 
 // Função para login
-export const login: express.RequestHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const login: express.RequestHandler = async ( req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { email, senha, rg, cro } = req.body;
+    const { email, senha } = req.body;
+
     const usuario = await User.findOne({ email });
 
     if (!usuario) {
       res.status(401).json({ msg: "Credenciais inválidas" });
-    }
-
-    if (!usuario) {
-      res.status(401).json({ msg: "Credenciais inválidas" });
       return;
     }
+
     const senhaValida = await bcrypt.compare(senha, usuario.senha);
+
     if (!senhaValida) {
       res.status(401).json({ msg: "Credenciais inválidas" });
-    }
-
-    if (usuario && usuario.perfil === "Perito" && (!cro || usuario.cro !== cro)) {
-       res.status(400).json({ msg: "Cro inválido para o perfil Perito" });
-    }
-
-    if (usuario && usuario.rg !== rg) {
-      res.status(400).json({ msg: "RG inválido" });
-    }
-
-    if (!usuario) {
-      res.status(401).json({ msg: "Credenciais inválidas" });
       return;
     }
-    const token = jwt.sign({ id: usuario._id, perfil: usuario.perfil }, process.env.JWT_SECRET!, { expiresIn: "7d" });
 
-    res.json({ token, usuario });
+    const token = jwt.sign(
+      { id: usuario._id, perfil: usuario.perfil },
+      process.env.JWT_SECRET!,
+      { expiresIn: "7d" }
+    );
+
+    res.status(200).json({ token, usuario });
   } catch (err) {
     next(err);
   }
