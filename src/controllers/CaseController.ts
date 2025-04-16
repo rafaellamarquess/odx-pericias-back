@@ -3,7 +3,7 @@ import { Case } from "../models/CaseModel";
 import { CustomRequest } from "../types/CustomRequest";
 import mongoose from "mongoose";
 
-export const caseController = {
+export const CaseController = {
 
 
     // Criar novo caso
@@ -38,7 +38,7 @@ export const caseController = {
     },
 
     // Listar apenas os títulos dos casos (para dropdown)
-    async getTitulosDosCasos(req: Request, res: Response, next: NextFunction) {
+    async getCaseTittle(req: Request, res: Response, next: NextFunction) {
       try {
         const titulos = await Case.find({}, "titulo"); // Busca apenas o campo 'titulo'
         res.status(200).json(titulos);

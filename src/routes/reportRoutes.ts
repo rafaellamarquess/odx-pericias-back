@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { reportController } from "../controllers/reportController";
+import { reportController } from "../controllers/ReportController";
 import { checkPermissions } from "../middlewares/permissionsMiddleware";
 import { Perfil } from "../models/UserModel";
 

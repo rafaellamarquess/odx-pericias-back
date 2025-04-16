@@ -1,6 +1,6 @@
 import express from "express";
 import multer from "multer";
-import { evidenceController } from "../controllers/evidenceController";
+import { evidenceController } from "../controllers/RvidenceController";
 import { checkPermissions } from "../middlewares/permissionsMiddleware";
 import { Perfil } from "../models/UserModel";
 

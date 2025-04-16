@@ -5,7 +5,6 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { CustomRequest } from "../types/CustomRequest";
 
-
 // Função para registrar um novo usuário
 export const register: express.RequestHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
@@ -84,18 +83,8 @@ export const getLoggedUser = async (req: CustomRequest, res: Response): Promise<
 };
 
 
-// Lista todos os usuários
-export const listUsers = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  try {
-    const usuarios = await User.find();
-    res.status(200).json(usuarios);
-  } catch (error) {
-    next(error); 
-  }
-};
-
 //Redefinir senha ou email
-export const updateCredencials: express.RequestHandler = async (req: CustomRequest, res: Response, next: NextFunction): Promise<void> => {
+export const forgotPassword: express.RequestHandler = async (req: CustomRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { newPassword, oldPassword, newEmail } = req.body;
 
@@ -152,6 +141,3 @@ export const updateCredencials: express.RequestHandler = async (req: CustomReque
   }
 };
 
-  //Editar Usuário
-
-  // Deletar Usuário
