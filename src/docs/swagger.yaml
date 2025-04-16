@@ -137,7 +137,7 @@ paths:
         '200':
           description: Usuário deletado com sucesso
 
-  /api/cases:
+/api/cases:
   post:
     summary: Criar um novo caso
     description: Cria um novo caso com as informações fornecidas.
@@ -263,33 +263,33 @@ paths:
                   type: string
                   example: "Apenas usuários com perfil 'Admin' ou 'Perito' podem visualizar os casos."
 
-  /api/cases/case-title:
-    get:
-      summary: Retorna todos os títulos dos casos cadastrados
-      tags: [Cases]
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Lista de títulos de casos
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: string
-                example:
-                  - Identificação de vítima no litoral
-                  - Análise de arcada dentária carbonizada
-                  - Reconhecimento facial por imagem
-        '401':
-          description: Não autorizado – token não fornecido ou inválido
-        '403':
-          description: Acesso negado – apenas Admins ou Peritos
-        '500':
-          description: Erro interno do servidor
+/api/cases/case-title:
+  get:
+    summary: Retorna todos os títulos dos casos cadastrados
+    tags: [Cases]
+    security:
+      - bearerAuth: []
+    responses:
+      '200':
+        description: Lista de títulos de casos
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+              example:
+                - Identificação de vítima no litoral
+                - Análise de arcada dentária carbonizada
+                - Reconhecimento facial por imagem
+      '401':
+        description: Não autorizado – token não fornecido ou inválido
+      '403':
+        description: Acesso negado – apenas Admins ou Peritos
+      '500':
+        description: Erro interno do servidor
 
-  /api/cases/{caseId}:
+/api/cases/{caseId}:
   patch:
     summary: Atualizar caso
     tags: [Cases]
@@ -347,7 +347,8 @@ paths:
       '404':
         description: Caso não encontrado
       '500':
-        description: Erro ao deletar caso  
+        description: Erro ao deletar caso
+
 
   /api/evidence:
     post:
