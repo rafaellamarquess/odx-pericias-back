@@ -176,5 +176,4 @@ export const CaseController = {
       next(err);
     }
   } 
-
 };

@@ -3,5 +3,5 @@
 // import { Case } from "../models/CaseModel";
 
 
-// export const dashboardController = {
+// export const DashboardController = {
 //}

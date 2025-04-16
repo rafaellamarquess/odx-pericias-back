@@ -4,9 +4,9 @@ import { Case } from "../models/CaseModel";
 import puppeteer from "puppeteer";
 import { NextFunction, Request, Response } from "express";
 
-export const reportController = {
+export const ReportController = {
   
-  async gerarRelatorioCaso(req: Request, res: Response): Promise<void> {
+  async createReport(req: Request, res: Response): Promise<void> {
     try {
       const caso = await Case.findById(Case)
       .populate({

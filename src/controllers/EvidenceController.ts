@@ -3,7 +3,7 @@ import cloudinary from "../config/cloudinary";
 import { Evidence } from "../models/EvidenceModel";
 import { Case } from "../models/CaseModel"; // Importando o modelo de "Case"
 
-export const evidenceController = {
+export const EvidenceController = {
 
   // Adicionar evidência
   async addEvidence(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -69,7 +69,5 @@ export const evidenceController = {
 
   //Deletar evidência
 
-  // Listar evidências
-
-  //Filtros
+  // Listar evidências por Filtros
 };
