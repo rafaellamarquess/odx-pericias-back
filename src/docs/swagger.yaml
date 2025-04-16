@@ -212,36 +212,87 @@ paths:
                   type: string
                   example: "Apenas usuários com perfil 'Admin' ou 'Perito' podem cadastrar casos."
 
-/api/cases/case-title:
   get:
-    summary: Retorna todos os títulos dos casos cadastrados
+    summary: Listar todos os casos
+    description: Retorna uma lista de todos os casos cadastrados. Pode aceitar parâmetros de busca por query string.
     tags: [Casos]
-    security:
-      - bearerAuth: []
+    parameters:
+      - in: query
+        name: titulo
+        schema:
+          type: string
+        description: Filtrar casos pelo título
+      - in: query
+        name: responsavel
+        schema:
+          type: string
+        description: Filtrar casos pelo nome do responsável
+      - in: query
+        name: dataCriacao
+        schema:
+          type: string
+          format: date
+        description: Filtrar casos por data de criação
     responses:
       '200':
-        description: Lista de títulos de casos
+        description: Lista de casos retornada com sucesso
         content:
           application/json:
             schema:
               type: array
               items:
-                type: string
-              example:
-                - Identificação de vítima no litoral
-                - Análise de arcada dentária carbonizada
-                - Reconhecimento facial por imagem
+                $ref: '#/components/schemas/Case'
       '401':
-        description: Não autorizado – token não fornecido ou inválido
+        description: Usuário não autenticado
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                msg:
+                  type: string
+                  example: "Usuário não autenticado."
       '403':
-        description: Acesso negado – apenas Admins ou Peritos
-      '500':
-        description: Erro interno do servidor
+        description: Permissão negada
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                msg:
+                  type: string
+                  example: "Apenas usuários com perfil 'Admin' ou 'Perito' podem visualizar os casos."
 
-/api/cases/{caseId}:
+  /api/cases/case-title:
+    get:
+      summary: Retorna todos os títulos dos casos cadastrados
+      tags: [Cases]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lista de títulos de casos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                example:
+                  - Identificação de vítima no litoral
+                  - Análise de arcada dentária carbonizada
+                  - Reconhecimento facial por imagem
+        '401':
+          description: Não autorizado – token não fornecido ou inválido
+        '403':
+          description: Acesso negado – apenas Admins ou Peritos
+        '500':
+          description: Erro interno do servidor
+
+  /api/cases/{caseId}:
   patch:
     summary: Atualizar caso
-    tags: [Casos]
+    tags: [Cases]
     parameters:
       - in: path
         name: caseId
@@ -275,7 +326,7 @@ paths:
 
   delete:
     summary: Deletar caso
-    tags: [Casos]
+    tags: [Cases]
     parameters:
       - in: path
         name: caseId
@@ -296,7 +347,7 @@ paths:
       '404':
         description: Caso não encontrado
       '500':
-        description: Erro ao deletar caso
+        description: Erro ao deletar caso  
 
   /api/evidence:
     post:
