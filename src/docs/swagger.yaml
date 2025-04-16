@@ -137,7 +137,7 @@ paths:
         '200':
           description: Usuário deletado com sucesso
 
- /api/cases:
+  /api/cases:
   post:
     summary: Criar um novo caso
     description: Cria um novo caso com as informações fornecidas.
