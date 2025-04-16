@@ -90,8 +90,7 @@ paths:
       responses:
         '201':
           description: Usuário criado com sucesso
-
-  /api/user:
+          
     get:
       summary: Lista todos os usuários
       tags: [User]
