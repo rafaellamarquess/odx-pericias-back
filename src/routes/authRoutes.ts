@@ -1,15 +1,15 @@
 import express from "express";
-import { listUsers, login, logout, register } from "../controllers/authController";
+import { getLoggedUser, listUsers, login, logout, register } from "../controllers/authController";
 import { checkPermissions } from "../middlewares/permissionsMiddleware";
-import { Perfil } from "../models/UserModel";
+import { authenticateToken } from "../middlewares/authMiddleware";
 
 const router = express.Router();
 
 router.post("/register", register);
 router.post("/login", login);
 router.post("/logout", logout);
-router.get("/listusers", listUsers);
-
+router.get("/list-users", listUsers);
+router.get("/logged-user", authenticateToken, getLoggedUser);
 
 // router.get("/listusers", checkPermissions(Perfil.ADMIN), listUsers);
 

@@ -4,6 +4,8 @@ import { CustomRequest } from "../types/CustomRequest";
 import mongoose from "mongoose";
 
 export const caseController = {
+
+
     // Criar novo caso
     async createCase(req: CustomRequest, res: Response, next: NextFunction): Promise<void> {
       try {
@@ -13,8 +15,7 @@ export const caseController = {
          res.status(401).json({ msg: "Usuário não autenticado." });
          return;
         }
-  
-        // Verificar se o perfil do usuário é 'Admin' ou 'Perito'
+        
         if (user.perfil !== "Admin" && user.perfil !== "Perito") {
          res.status(403).json({ msg: "Apenas usuários com perfil 'Admin' ou 'Perito' podem cadastrar casos." });
         }
@@ -37,52 +38,52 @@ export const caseController = {
     },
 
     // Listar apenas os títulos dos casos (para dropdown)
-async getTitulosDosCasos(req: Request, res: Response, next: NextFunction) {
-  try {
-    const titulos = await Case.find({}, "titulo"); // Busca apenas o campo 'titulo'
-    res.status(200).json(titulos);
-  } catch (err) {
-    next(err);
-  }
-},
-
-  async finalizarCaso(req: Request, res: Response): Promise<void> {
-    try {
-      const { caseId } = req.params;
-  
-      const caso = await Case.findById(caseId);
-      if (!caso) {
-        res.status(404).json({ msg: "Caso não encontrado." });
-        return;
-      }
-  
-      caso.status = "Finalizado";
-      await caso.save();
-      res.status(200).json({ msg: `Caso "${caso.titulo}" finalizado com sucesso.` });
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ msg: "Erro ao finalizar caso." });
-    }
-  },
-
-      //Editar caso
-    // Atualizar status do caso
-    async updateStatus (req: Request, res: Response, next: NextFunction) {
+    async getTitulosDosCasos(req: Request, res: Response, next: NextFunction) {
       try {
-        const { caseId } = req.params;
-        const { status } = req.body;
-  
-        const updated = await Case.findByIdAndUpdate(caseId, { status }, { new: true });
-        res.status(200).json(updated);
+        const titulos = await Case.find({}, "titulo"); // Busca apenas o campo 'titulo'
+        res.status(200).json(titulos);
       } catch (err) {
         next(err);
       }
     },
-  
-  
 
+    // Atualizar/Editar caso
+    async updateCase(req: Request, res: Response, next: NextFunction): Promise<void> {
+      try {
+        const { caseId } = req.params;
+        const updateFields = req.body;
 
-  //Deletar Caso
+        const casoAtualizado = await Case.findByIdAndUpdate(caseId, updateFields, { new: true });
+
+        if (!casoAtualizado) {
+          res.status(404).json({ msg: "Caso não encontrado." });
+          return;
+        }
+
+        res.status(200).json({ msg: "Caso atualizado com sucesso.", caso: casoAtualizado });
+      } catch (err) {
+        next(err);
+      }
+    },
+
+      //Deletar Caso
+    async deleteCase(req: Request, res: Response, next: NextFunction): Promise<void> {
+      try {
+        const { caseId } = req.params;
+
+        const casoDeletado = await Case.findByIdAndDelete(caseId);
+
+        if (!casoDeletado) {
+          res.status(404).json({ msg: "Caso não encontrado." });
+          return;
+        }
+
+        res.status(200).json({ msg: `Caso "${casoDeletado.titulo}" deletado com sucesso.` });
+      } catch (err) {
+        next(err);
+      }
+    },
+
 
 
   //Listar todos os casos

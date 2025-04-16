@@ -3,6 +3,7 @@ import express from "express";
 import User from "../models/UserModel";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
+import { CustomRequest } from "../types/CustomRequest";
 
 
 // Função para registrar um novo usuário
@@ -71,7 +72,19 @@ export const logout: express.RequestHandler = (req: Request, res: Response): voi
   res.status(200).json({ message: "Logout bem-sucedido" });
 };
 
-// Função para listar todos os usuários
+
+// Função para retornar os dados do usuário logado
+export const getLoggedUser = async (req: CustomRequest, res: Response): Promise<void> => {
+  if (!req.user) {
+    res.status(401).json({ message: "Não autorizado." });
+    return;
+  }
+
+  res.status(200).json(req.user);
+};
+
+
+// Lista todos os usuários
 export const listUsers = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const usuarios = await User.find();
@@ -79,9 +92,9 @@ export const listUsers = async (req: Request, res: Response, next: NextFunction)
   } catch (error) {
     next(error); 
   }
+};
 
 
   //Editar Usuário
 
   // Deletar Usuário
-};

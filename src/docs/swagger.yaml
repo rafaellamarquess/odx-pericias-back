@@ -496,7 +496,7 @@ components:
 
     LoginRequest:
       type: object
-      required: [email, senha, rg, perfil]
+      required: [email, senha]
       properties:
         email:
           type: string
@@ -505,10 +505,3 @@ components:
         senha:
           type: string
           example: "senha"
-        rg:
-          type: string
-          example: "123456789"
-        perfil:
-          type: string
-          enum: [Admin, Perito, Assistente]
-          example: "Admin"
