@@ -302,7 +302,7 @@ paths:
           description: Relatório não encontrado
         '500':
           description: Erro ao assinar o relatório
-          
+
 
 components:
   securitySchemes:
@@ -339,7 +339,7 @@ components:
         caso:
           type: string
           description: Título do caso relacionado
-        tipo:
+        tipo evidencia:
           type: string
           enum: [imagem, texto]
         categoria:
