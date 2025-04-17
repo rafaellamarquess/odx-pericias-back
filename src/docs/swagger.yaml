@@ -637,10 +637,10 @@ components:
     EvidenceRequest:
       type: object
       properties:
-        caso:
+        caseeId:
           type: string
-          description: Título do Caso Relacionado
-          example: "Caso de identificação de vítima"
+          description: ID do Caso Relacionado
+          example: "67fb107daf5f09812475534f"
         tipoEvidencia:
           type: string
           enum: [imagem, texto]
@@ -669,9 +669,6 @@ components:
         coletadoPor:
           type: string
           example: "Dra. Helena Costa"
-        laudo:
-          type: string
-          example: "Texto do laudo pericial"
         file:
           type: string
           format: binary
