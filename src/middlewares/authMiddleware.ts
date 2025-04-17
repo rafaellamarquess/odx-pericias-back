@@ -7,29 +7,26 @@ export const authenticateToken = async (req: CustomRequest, res: Response, next:
   const token = req.headers.authorization?.split(" ")[1];
 
   if (!token) {
-    res.status(401).json({ message: "Token não fornecido." });
+    res.status(401).json({ message: "Token não fornecido." }); 
+    return;
   }
 
   try {
     if (!process.env.JWT_SECRET) {
       throw new Error("JWT_SECRET is not defined in the environment variables.");
     }
-    if (!token) {
-      throw new Error("Token is undefined.");
-    }
+
     const decoded: any = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id); // 👈 obs: 'decoded.id' se no login você usou { id: usuario._id }
+    const user = await User.findById(decoded.id);
 
     if (!user) {
-      res.status(401).json({ message: "Usuário não encontrado." });
+      res.status(401).json({ message: "Usuário não encontrado." }); 
+      return;
     }
 
-    if (user) {
-      req.user = user;
-    }
+    req.user = user; 
     return next();
   } catch (error) {
-    res.status(401).json({ message: "Token inválido." });
-    return;
+     res.status(401).json({ message: "Token inválido." }); // 'return' também aqui
   }
 };
