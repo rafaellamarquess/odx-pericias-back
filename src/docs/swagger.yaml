@@ -666,6 +666,9 @@ components:
         conteudo:
           type: string
           example: "Texto de evidência se for do tipo texto"
+        coletado por:
+          type: string
+          example: "Dra. Helena Costa"
         casoId:
           type: string
           example: "67fb107daf5f09812475534f"
