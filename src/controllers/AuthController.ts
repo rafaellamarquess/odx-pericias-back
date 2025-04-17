@@ -57,7 +57,7 @@ export const getLoggedUser = async ( req: CustomRequest, res: Response, next: Ne
       id: userId,
       nome: userData.nome,
       cro: userData.cro || "",
-      tipo: userData.perfil.toLowerCase(),
+      perfil: userData.perfil.toLowerCase(),
     });
   } catch (err: any) {
     if (err.status && err.msg) {
