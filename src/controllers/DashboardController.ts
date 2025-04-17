@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import mongoose from "mongoose";
 import { Evidence } from "../models/EvidenceModel";
 
+// Criando parâmetro de filtragens
 interface Filtros {
     vitima?: { $regex: string; $options: string };
     sexo?: string;
@@ -10,6 +11,7 @@ interface Filtros {
     cidade?: { $regex: string; $options: string };
   }
 
+// Interação com os filtros
 export const DashboardController = {
     async filtrarCasos(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
