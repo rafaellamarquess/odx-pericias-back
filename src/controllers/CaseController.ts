@@ -27,6 +27,7 @@ export const CaseController = {
           descricao,
           responsavel,
           dataCriacao: new Date(dataCriacao),
+          
           status: "Em andamento",
         });
   

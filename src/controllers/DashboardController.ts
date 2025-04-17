@@ -6,9 +6,8 @@ import { Evidence } from "../models/EvidenceModel";
 interface Filtros {
     vitima?: { $regex: string; $options: string };
     sexo?: string;
-    estado?: string;
     lesoes?: { $regex: string; $options: string };
-    cidade?: { $regex: string; $options: string };
+    local?: { $regex: string; $options: string };
   }
 
 // Interação com os filtros
@@ -17,9 +16,8 @@ export const DashboardController = {
     try {
       const { vitima, 
              sexo, 
-             estado, 
              lesoes, 
-             cidade, 
+             local, 
              page = "1", 
              limit = "10" 
             } = req.query;
@@ -51,14 +49,12 @@ export const DashboardController = {
       if (typeof sexo === 'string' && sexo) {
         filtros.sexo = sexo;
       }
-      if (typeof estado === 'string' && estado) {
-        filtros.estado = estado;
-      }
+
       if (typeof lesoes === 'string' && lesoes) {
         filtros.lesoes = { $regex: lesoes, $options: 'i' };
       }
-      if (typeof cidade === 'string' && cidade) {
-        filtros.cidade = { $regex: cidade, $options: 'i' };
+      if (typeof local === 'string' && local) {
+        filtros.local = { $regex: local, $options: 'i' };
       }
       
 
