@@ -9,8 +9,8 @@ export const EvidenceController = {
   // Adicionar evidência
   async createEvidence(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { caseTitle, tipo } = req.params;
-      const { categoria, vitima, sexo, estadoCorpo, lesoes, coletadoPor, conteudo } = req.body;
+      const { caseTitle} = req.params;
+      const { categoria, tipo, vitima, sexo, estadoCorpo, lesoes, coletadoPor, conteudo } = req.body;
   
       // Verifica tipo
       const tiposValidos = ["imagem", "texto"];
