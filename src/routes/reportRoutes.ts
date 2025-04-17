@@ -10,5 +10,6 @@ router.post("/", checkPermissions([Perfil.ADMIN, Perfil.PERITO]), reportControll
 router.post("/sing/:reportId", checkPermissions([Perfil.ADMIN, Perfil.PERITO]), reportController.assinarDigitalmente);
 router.put("/:reportId",checkPermissions([Perfil.ADMIN, Perfil.PERITO]),reportController.atualizarRelatorioCaso);
 router.delete("/:reportId",checkPermissions([Perfil.ADMIN, Perfil.PERITO]),reportController.deletarRelatorioCaso);
+router.get("/",checkPermissions([Perfil.ADMIN, Perfil.PERITO]),reportController.listarRelatorios);
 
 export default router;

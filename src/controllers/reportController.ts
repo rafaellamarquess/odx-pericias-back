@@ -1,5 +1,6 @@
 import { Report } from "../models/ReportModel";
 import { Evidence } from "../models/EvidenceModel";
+import { CustomRequest } from "../types/CustomRequest";
 import { Case } from "../models/CaseModel";
 import puppeteer from "puppeteer";
 import { NextFunction, Request, Response } from "express";
@@ -131,11 +132,7 @@ export const reportController = {
     }
   },
 
-  async assinarDigitalmente(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> {
+  async assinarDigitalmente(req: Request,res: Response,next: NextFunction): Promise<void> {
     try {
       const { reportId } = req.params;
 
@@ -163,7 +160,50 @@ export const reportController = {
     }
   },
 
-  async atualizarRelatorioCaso(req: Request,res: Response,next: NextFunction): Promise<void> {
+  async listarRelatorios(req: CustomRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      // Verificar permissões
+      if (!req.user || !["ADMIN", "PERITO"].includes(req.user.perfil)) {
+        res.status(403).json({ msg: "Permissões insuficientes." });
+        return;
+      }
+
+      // Configurar paginação
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const skip = (page - 1) * limit;
+
+      // Consultar relatórios com paginação e populate
+      const relatorios = await Report.find()
+        .populate("caso", "titulo descricao status")
+        .populate("evidencias", "tipo categoria vitima sexo estadoCorpo")
+        .skip(skip)
+        .limit(limit)
+        .lean();
+
+      // Contar o total de relatórios para calcular o número de páginas
+      const total = await Report.countDocuments();
+      const totalPages = Math.ceil(total / limit);
+
+      // Resposta formatada
+      const response = {
+        msg: relatorios.length === 0 ? "Nenhum relatório encontrado." : "Relatórios encontrados.",
+        data: relatorios,
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalItems: total,
+          itemsPerPage: limit
+        }
+      };
+
+      res.status(200).json(response);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async atualizarRelatorioCaso(req: CustomRequest,res: Response,next: NextFunction): Promise<void> {
     try {
       const { reportId } = req.params;
 
@@ -222,7 +262,7 @@ export const reportController = {
     }
   },
 
-  async deletarRelatorioCaso(req: Request,res: Response,next: NextFunction): Promise<void> {
+  async deletarRelatorioCaso(req: CustomRequest,res: Response,next: NextFunction): Promise<void> {
     try {
       const { reportId } = req.params;
 
