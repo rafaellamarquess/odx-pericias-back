@@ -637,7 +637,7 @@ components:
     EvidenceRequest:
       type: object
       properties:
-        caseId:
+        casoId:
           type: string
           description: ID do Caso Relacionado
           example: "67fb107daf5f09812475534f"
