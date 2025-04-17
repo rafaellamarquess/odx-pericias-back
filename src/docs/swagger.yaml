@@ -312,8 +312,7 @@ components:
 security:
   - BearerAuth: []
 
-
-  schemas:
+schemas:
     Case:
       type: object
       properties:
