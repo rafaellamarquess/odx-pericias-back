@@ -87,6 +87,7 @@ export const listUsers = async (req: Request, res: Response, next: NextFunction)
   } catch (error) {
     next(error); 
   }
+}
 
 
   //Editar Usuário
@@ -117,9 +118,41 @@ export const listUsers = async (req: Request, res: Response, next: NextFunction)
         }
         usuario.email = email;
       }
-    }
-   
-  }
 
-  // Deletar Usuário
+      if (nome) usuario.nome = nome;
+      if (perfil) usuario.perfil = perfil;
+      if (cro && usuario.perfil === "Perito") usuario.cro = cro;
+      if (senha) usuario.senha = await bcrypt.hash(senha, 10);
+  
+      await usuario.save();
+      res.status(200).json({ msg: "Usuário atualizado com sucesso", usuario });
+    }
+     catch (error) {
+      next(error);
+    }
+  }
+   
+  
+
+  
+
+
+
+
+export const deleteUser: express.RequestHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const usuario = await User.findByIdAndDelete(id);
+
+    if (!usuario) {
+      res.status(404).json({ msg: "Usuário não encontrado" });
+      return;
+    }
+
+    res.status(200).json({ msg: "Usuário deletado com sucesso" });
+  } catch (error) {
+    next(error);
+  }
 };
+
+
