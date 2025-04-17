@@ -1,5 +1,5 @@
-// models/Case.ts
-import mongoose, { Document, Schema } from "mongoose";
+import mongoose, { Document, Schema, Types } from "mongoose";
+import { IEvidence } from "./EvidenceModel"; // Importe a interface de Evidence
 
 interface ICase extends Document {
   titulo: string;
@@ -7,7 +7,7 @@ interface ICase extends Document {
   status: "Em andamento" | "Finalizado" | "Arquivado";
   responsavel: string;
   dataCriacao: Date;
-  updateStatus(status: string): void;
+  evidencias: Types.Array<IEvidence>;
 }
 
 const CaseSchema = new Schema<ICase>({
@@ -15,12 +15,9 @@ const CaseSchema = new Schema<ICase>({
   descricao: { type: String, required: true },
   status: { type: String, enum: ["Em andamento", "Finalizado", "Arquivado"], required: true },
   responsavel: { type: String, ref: "User", required: true },
-  dataCriacao: { type: Date, default: Date.now }
+  dataCriacao: { type: Date, default: Date.now },
+  evidencias: [{ type: Schema.Types.ObjectId, ref: "Evidence" }] // Relacionamento com a coleção Evidence
 });
-
-CaseSchema.methods.updateStatus = function (newStatus: string): void {
-  this.status = newStatus;
-};
 
 const Case = mongoose.model<ICase>("Case", CaseSchema);
 export { Case, ICase };

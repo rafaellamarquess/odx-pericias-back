@@ -5,40 +5,57 @@ import mongoose from "mongoose";
 
 export const CaseController = {
 
-
     // Criar novo caso
     async createCase(req: CustomRequest, res: Response, next: NextFunction): Promise<void> {
       try {
         const user = req.user;
-
+    
         if (!user) {
-         res.status(401).json({ msg: "Usuário não autenticado." });
-         return;
+          res.status(401).json({ msg: "Usuário não autenticado." });
+          return;
         }
-        
+    
         if (user.perfil !== "Admin" && user.perfil !== "Perito") {
-         res.status(403).json({ msg: "Apenas usuários com perfil 'Admin' ou 'Perito' podem cadastrar casos." });
+          res.status(403).json({ msg: "Apenas usuários com perfil 'Admin' ou 'Perito' podem cadastrar casos." });
+          return;
         }
-  
+    
         const { titulo, descricao, responsavel, dataCriacao } = req.body;
-  
+    
+        if (!titulo || !descricao || !responsavel || !dataCriacao) {
+          res.status(400).json({ msg: "Todos os campos são obrigatórios: título, descrição, responsável e data de criação." });
+          return;
+        }
+    
+        if (!mongoose.Types.ObjectId.isValid(responsavel)) {
+          res.status(400).json({ msg: "ID do responsável inválido." });
+          return;
+        }
+    
+        const parsedDate = new Date(dataCriacao);
+        if (isNaN(parsedDate.getTime())) {
+          res.status(400).json({ msg: "Data de criação inválida." });
+          return;
+        }
+    
         const newCase = new Case({
           titulo,
           descricao,
           responsavel,
-          dataCriacao: new Date(dataCriacao),
+          dataCriacao: parsedDate,
           status: "Em andamento",
         });
-  
+    
         await newCase.save();
         res.status(201).json({ msg: "Caso cadastrado com sucesso!", caso: newCase });
+    
       } catch (err) {
         next(err);
       }
-    },
+    },    
 
     // Listar apenas os títulos dos casos (para dropdown)
-    async getCaseTittle(req: Request, res: Response, next: NextFunction) {
+    async getCaseTitle(req: Request, res: Response, next: NextFunction) {
       try {
         const titulos = await Case.find({}, "titulo"); // Busca apenas o campo 'titulo'
         res.status(200).json(titulos);
@@ -47,19 +64,35 @@ export const CaseController = {
       }
     },
 
-    // Atualizar/Editar caso
+    //Editar Caso
     async updateCase(req: Request, res: Response, next: NextFunction): Promise<void> {
       try {
         const { caseId } = req.params;
-        const updateFields = req.body;
-
+        const allowedFields = [
+          "titulo",
+          "descricao",
+          "status",
+          "dataInicio",
+          "dataFim",
+          "categoria",
+          "observacoes"
+        ];
+        const updateFields: any = {};
+    
+        // Somente os campos permitidos serão atualizados
+        allowedFields.forEach((field) => {
+          if (req.body[field] !== undefined) {
+            updateFields[field] = req.body[field];
+          }
+        });
+    
         const casoAtualizado = await Case.findByIdAndUpdate(caseId, updateFields, { new: true });
-
+    
         if (!casoAtualizado) {
           res.status(404).json({ msg: "Caso não encontrado." });
           return;
         }
-
+    
         res.status(200).json({ msg: "Caso atualizado com sucesso.", caso: casoAtualizado });
       } catch (err) {
         next(err);

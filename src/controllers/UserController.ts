@@ -34,7 +34,7 @@ export const createUser: express.RequestHandler = async (req: Request, res: Resp
 };
 
   //Editar Usuário
-  export const editUser: express.RequestHandler = async (req: CustomRequest, res: Response, next: NextFunction): Promise<void> => {
+  export const updateUser: express.RequestHandler = async (req: CustomRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { userId } = req.params;  // Recebe o ID do usuário a ser editado
       const { nome, email, perfil, rg, cro } = req.body;  // Dados para atualização

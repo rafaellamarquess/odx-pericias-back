@@ -83,11 +83,13 @@ export const forgotPassword: express.RequestHandler = async (req: CustomRequest,
     if (newPassword) {
       if (!oldPassword) {
        res.status(400).json({ msg: "Senha antiga é necessária para a alteração de senha." });
+      return;
       }
 
       const isMatch = await bcrypt.compare(oldPassword, user.senha);
       if (!isMatch) {
         res.status(401).json({ msg: "Senha antiga inválida." });
+        return;
       }
 
       user.senha = await bcrypt.hash(newPassword, 10);
@@ -98,6 +100,7 @@ export const forgotPassword: express.RequestHandler = async (req: CustomRequest,
       const existingUser = await User.findOne({ email: newEmail });
       if (existingUser) {
         res.status(400).json({ msg: "Este e-mail já está em uso." });
+        return;
       }
 
       user.email = newEmail;
@@ -110,7 +113,7 @@ export const forgotPassword: express.RequestHandler = async (req: CustomRequest,
     if (err.status && err.msg) {
       res.status(err.status).json({ msg: err.msg });
     } else {
-      next(err); // repassa erro desconhecido
+      next(err);
     }
   }
 };

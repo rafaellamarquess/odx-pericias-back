@@ -3,114 +3,113 @@ import { Evidence } from "../models/EvidenceModel";
 import { Case } from "../models/CaseModel";
 import puppeteer from "puppeteer";
 import { NextFunction, Request, Response } from "express";
+import mongoose from "mongoose";
 
 export const ReportController = {
   
-  async createReport(req: Request, res: Response): Promise<void> {
-    try {
-      const caso = await Case.findById(Case)
-      .populate({
-        path: "evidencias",
-        populate: {
-          path: "coletadoPor",
-          select: "nome"
-        }
-      })
-      .lean<{ 
-        titulo: string;
-        descricao: string;
-        status: string;
-        evidencias: Array<{
-          _id: string;
-          tipo: string;
-          categoria: string;
-          imagemURL?: string;
-          conteudo?: string;
-          coletadoPor?: { nome: string };
-        }>;
-      }>();
-        
-      if (!caso) {
-        res.status(404).json({ msg: "Caso não encontrado." });
-        return;
-      }
-  
-      const evidenciasIds = caso.evidencias.map(e => e._id);
-  
-      const report = await Report.findOne({ evidencias: { $in: evidenciasIds } }).lean();
-  
-      if (!report) {
-        res.status(404).json({ msg: "Relatório não encontrado para este caso." });
-        return;
-      }
-  
-      const browser = await puppeteer.launch();
-      const page = await browser.newPage();
-  
-      const evidenciasHtml = caso.evidencias.map(e => `
-        <div style="margin-bottom: 20px;">
-          <h4>Evidência (${e.tipo}) - ${e.categoria}</h4>
-          ${e.tipo === "imagem" ? `<img src="${e.imagemURL}" style="max-width: 300px;" />` : `<p>${e.conteudo}</p>`}
-          <p><strong>Coletado por:</strong> ${e.coletadoPor?.nome || "Desconhecido"}</p>
-        </div>
-      `).join("");
-  
-      await page.setContent(`
-        <html>
-          <head>
-            <style>
-              body { font-family: Arial, sans-serif; padding: 20px; }
-              h1, h2, h3, h4 { color: #333; }
-              p { margin: 4px 0; }
-              .section { margin-bottom: 25px; }
-            </style>
-          </head>
-          <body>
-            <h1>Relatório Pericial</h1>
-  
-            <div class="section">
-              <h2>Informações do Caso</h2>
-              <p><strong>Título:</strong> ${caso.titulo}</p>
-              <p><strong>Descrição:</strong> ${caso.descricao}</p>
-              <p><strong>Status:</strong> ${caso.status}</p>
-            </div>
-  
-            <div class="section">
-              <h2>Detalhes do Relatório</h2>
-              <p><strong>Título:</strong> ${report.titulo}</p>
-              <p><strong>Descrição:</strong> ${report.descricao}</p>
-              <p><strong>Destinatário:</strong> ${report.destinatario}</p>
-              <p><strong>Objeto da Perícia:</strong> ${report.objetoPericia}</p>
-              <p><strong>Método Utilizado:</strong> ${report.metodoUtilizado}</p>
-              <p><strong>Materiais Utilizados:</strong> ${report.materiaisUtilizados}</p>
-              <p><strong>Exames Realizados:</strong> ${report.examesRealizados}</p>
-              <p><strong>Considerações Técnico-Periciais:</strong> ${report.consideracoesTecnicoPericiais}</p>
-              <p><strong>Conclusão Técnica:</strong> ${report.conclusaoTecnica}</p>
-              <p><strong>Assinado Digitalmente:</strong> ${report.assinadoDigitalmente ? "Sim" : "Não"}</p>
-              <p><strong>Data de Criação:</strong> ${new Date(report.criadoEm).toLocaleString()}</p>
-            </div>
-  
-            <div class="section">
-              <h2>Evidências Relacionadas</h2>
-              ${evidenciasHtml}
-            </div>
-          </body>
-        </html>
-      `);
-  
-      const pdf = await page.pdf({ format: "A4" });
-      await browser.close();
-  
-      res.setHeader("Content-Type", "application/pdf");
-      res.setHeader("Content-Disposition", `attachment; filename="relatorio-caso-${Case}.pdf"`);
-      res.send(pdf);
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ msg: "Erro ao gerar relatório do caso." });
-    }
-  },  
+async createReport(req: Request, res: Response): Promise<void> {
+  try {
+    const {
+      titulo,
+      descricao,
+      objetoPericia,
+      analiseTecnica,
+      metodoUtilizado,
+      destinatario,
+      materiaisUtilizados,
+      examesRealizados,
+      consideracoesTecnicoPericiais,
+      conclusaoTecnica,
+      caso: casoId,
+      evidencias: evidenciasIds
+    } = req.body;
 
-  // Rota para assinar digitalmente o relatório
+    // Verifica se o caso existe
+    const caso = await Case.findById(casoId).populate({
+      path: 'evidencias', // Popula as evidências
+      populate: {
+        path: 'coletadoPor', // Popula o coletador de cada evidência
+        model: 'User',
+        select: 'nome' // Seleciona o nome do perito (coletador)
+      }
+    });
+
+    if (!caso) {
+      res.status(404).json({ msg: 'Caso não encontrado.' });
+      return;
+    }
+
+    // Verifica se as evidências passadas existem
+    const evidencias = await Evidence.find({ '_id': { $in: evidenciasIds } }).populate({
+      path: 'coletadoPor', // Popula o coletador de cada evidência
+      model: 'User',
+      select: 'nome'
+    }).exec();
+
+    if (evidencias.length !== evidenciasIds.length) {
+      res.status(404).json({ msg: 'Uma ou mais evidências não encontradas.' });
+      return;
+    }
+
+    // Criação do relatório
+    const report = new Report({
+      titulo,
+      descricao,
+      objetoPericia,
+      analiseTecnica,
+      metodoUtilizado,
+      destinatario,
+      materiaisUtilizados,
+      examesRealizados,
+      consideracoesTecnicoPericiais,
+      conclusaoTecnica,
+      caso: caso._id,
+      evidencias: evidencias.map(e => e._id),
+      assinadoDigitalmente: false
+    });
+
+    await report.save();
+
+    // Gerando o PDF com Puppeteer
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+
+    // Gerar o HTML para o PDF com base nos dados do relatório e evidências
+    const evidenciasHtml = evidencias.map(e => `
+      <div style="margin-bottom: 20px;">
+        <h4>Evidência (${e.tipo}) - ${e.categoria}</h4>
+        ${e.tipo === "imagem" ? `<img src="${e.imagemURL}" style="max-width: 300px;" />` : `<p>${e.conteudo}</p>`}
+        <p><strong>Coletado por:</strong> ${typeof e.coletadoPor === 'object' && 'nome' in e.coletadoPor ? e.coletadoPor.nome : "Desconhecido"}</p>
+      </div>
+    `).join("");
+
+    const htmlContent = `
+      <h1>Relatório de Perícia</h1>
+      <h2>${titulo}</h2>
+      <p><strong>Descrição:</strong> ${descricao}</p>
+      <p><strong>Objeto da Perícia:</strong> ${objetoPericia}</p>
+      <p><strong>Análise Técnica:</strong> ${analiseTecnica}</p>
+      <p><strong>Metodo Utilizado:</strong> ${metodoUtilizado}</p>
+      <p><strong>Destinatário:</strong> ${destinatario}</p>
+      <p><strong>Materiais Utilizados:</strong> ${materiaisUtilizados}</p>
+      <p><strong>Exames Realizados:</strong> ${examesRealizados}</p>
+      <p><strong>Considerações Técnicas Periciais:</strong> ${consideracoesTecnicoPericiais}</p>
+      <p><strong>Conclusão Técnica:</strong> ${conclusaoTecnica}</p>
+      <h3>Evidências:</h3>
+      ${evidenciasHtml}
+    `;
+
+    await page.setContent(htmlContent);
+    const pdfBuffer = await page.pdf({ format: 'A4' });
+
+    res.status(200).json({ msg: 'Relatório criado com sucesso.', report, pdf: pdfBuffer });
+
+    await browser.close();
+  } catch (error) {
+    res.status(500).json({ msg: 'Erro ao gerar o relatório.', error });
+  }
+},  
+
   async assinarDigitalmente(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { reportId } = req.params;
@@ -125,6 +124,158 @@ export const ReportController = {
       await report.save();
 
       res.status(200).json({ msg: `Relatório "${report.titulo}" assinado digitalmente.` });
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async updateReport(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { reportId } = req.params;
+      const allowedFields = [
+        "titulo",
+        "descricao",
+        "objetoPericia",
+        "analiseTecnica",
+        "metodoUtilizado",
+        "destinatario",
+        "materiaisUtilizados",
+        "examesRealizados",
+        "consideracoesTecnicoPericiais",
+        "conclusaoTecnica",
+        "caso",  // Caso relacionado ao relatório
+        "evidencias",  // Evidências associadas ao relatório
+        "assinadoDigitalmente"  // Status da assinatura digital
+      ];
+  
+      const updateFields: any = {};
+  
+      allowedFields.forEach((field) => {
+        if (req.body[field] !== undefined) {
+          updateFields[field] = req.body[field];
+        }
+      });
+  
+      const report = await Report.findByIdAndUpdate(reportId, updateFields, { new: true });
+  
+      if (!report) {
+        res.status(404).json({ msg: "Relatório não encontrado." });
+        return;
+      }
+  
+      res.status(200).json({ msg: "Relatório atualizado com sucesso.", report });
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async deleteReport(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { reportId } = req.params;
+  
+      const report = await Report.findByIdAndDelete(reportId);
+  
+      if (!report) {
+        res.status(404).json({ msg: "Relatório não encontrado." });
+        return;
+      }
+  
+      res.status(200).json({ msg: "Relatório deletado com sucesso." });
+    } catch (err) {
+      next(err);
+    }
+  },
+  
+  async listReports(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { 
+        titulo, 
+        descricao, 
+        caso, 
+        dataInicio, 
+        dataFim, 
+        assinadoDigitalmente, 
+        page = "1", 
+        limit = "10" 
+      } = req.query;
+  
+      const pageNum = parseInt(page as string, 10);
+      const limitNum = parseInt(limit as string, 10);
+  
+      if (isNaN(pageNum) || pageNum < 1) {
+        res.status(400).json({ msg: "Número da página inválido" });
+        return;
+      }
+  
+      if (isNaN(limitNum) || limitNum < 1 || limitNum > 100) {
+        res.status(400).json({ msg: "Limite por página deve ser entre 1 e 100" });
+        return;
+      }
+  
+      const filtros: any = {};
+  
+      if (titulo) {
+        filtros.titulo = { $regex: titulo as string, $options: "i" };
+      }
+  
+      if (descricao) {
+        filtros.descricao = { $regex: descricao as string, $options: "i" };
+      }
+  
+      if (caso) {
+        if (!mongoose.Types.ObjectId.isValid(caso as string)) {
+          res.status(400).json({ msg: "ID do caso inválido" });
+          return;
+        }
+        filtros.caso = new mongoose.Types.ObjectId(caso as string);
+      }
+  
+      if (assinadoDigitalmente) {
+        const assinado = assinadoDigitalmente === "true";
+        filtros.assinadoDigitalmente = assinado;
+      }
+  
+      if (dataInicio || dataFim) {
+        filtros.criadoEm = {};
+        if (dataInicio) {
+          const inicio = new Date(dataInicio as string);
+          if (isNaN(inicio.getTime())) {
+            res.status(400).json({ msg: "Data de início inválida" });
+            return;
+          }
+          filtros.criadoEm.$gte = inicio;
+        }
+  
+        if (dataFim) {
+          const fim = new Date(dataFim as string);
+          if (isNaN(fim.getTime())) {
+            res.status(400).json({ msg: "Data de fim inválida" });
+            return;
+          }
+          filtros.criadoEm.$lte = fim;
+        }
+      }
+  
+      const [relatorios, total] = await Promise.all([
+        Report.find(filtros)
+          .populate("caso", "titulo descricao")
+          .populate("evidencias", "categoria tipo imagemURL conteudo")
+          .sort({ criadoEm: -1 })
+          .skip((pageNum - 1) * limitNum)
+          .limit(limitNum),
+        Report.countDocuments(filtros)
+      ]);
+  
+      res.status(200).json({
+        msg: "Relatórios listados com sucesso",
+        relatorios,
+        paginacao: {
+          total,
+          paginaAtual: pageNum,
+          totalPaginas: Math.ceil(total / limitNum),
+          limitePorPagina: limitNum
+        }
+      });
     } catch (err) {
       next(err);
     }

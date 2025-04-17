@@ -47,7 +47,7 @@ paths:
       summary: Retorna os dados do usuário logado
       tags: [Auth]
       security:
-        - bearerAuth: []
+        - BearerAuth: []
       responses:
         '200':
           description: Dados do usuário logado
@@ -57,7 +57,7 @@ paths:
       summary: Redefine senha ou email do usuário logado
       tags: [Auth]
       security:
-        - bearerAuth: []
+        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -80,7 +80,7 @@ paths:
       summary: Cria um novo usuário (somente Admin)
       tags: [User]
       security:
-        - bearerAuth: []
+        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -90,12 +90,11 @@ paths:
       responses:
         '201':
           description: Usuário criado com sucesso
-          
     get:
       summary: Lista todos os usuários
       tags: [User]
       security:
-        - bearerAuth: []
+        - BearerAuth: []
       responses:
         '200':
           description: Lista de usuários
@@ -105,7 +104,7 @@ paths:
       summary: Edita um usuário (somente Admin)
       tags: [User]
       security:
-        - bearerAuth: []
+        - BearerAuth: []
       parameters:
         - name: userId
           in: path
@@ -121,12 +120,11 @@ paths:
       responses:
         '200':
           description: Informações do usuário atualizadas com sucesso
-
     delete:
       summary: Deleta um usuário (somente Admin)
       tags: [User]
       security:
-        - bearerAuth: []
+        - BearerAuth: []
       parameters:
         - name: userId
           in: path
@@ -142,6 +140,8 @@ paths:
       summary: Criar um novo caso
       description: Cria um novo caso com as informações fornecidas.
       tags: [Cases]
+      security:
+        - BearerAuth: []
       requestBody:
         description: Dados do novo caso a ser criado
         required: true
@@ -162,11 +162,12 @@ paths:
           description: Usuário não autenticado
         '403':
           description: Permissão negada
-
     get:
       summary: Listar todos os casos
       description: Retorna uma lista de todos os casos cadastrados.
       tags: [Cases]
+      security:
+        - BearerAuth: []
       parameters:
         - in: query
           name: titulo
@@ -195,10 +196,38 @@ paths:
         '403':
           description: Permissão negada
 
-  /api/cases/{caseId}:
-    patch:
-      summary: Atualizar caso
+  /api/cases/case-title:
+    get:
+      summary: Obter título de um caso
+      description: Retorna o título de um caso específico.
       tags: [Cases]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Título do caso retornado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  titulo:
+                    type: string
+                    example: "Caso João da Silva"
+        '401':
+          description: Usuário não autenticado
+        '403':
+          description: Permissão negada
+        '404':
+          description: Caso não encontrado
+
+  /api/cases/{caseId}:
+    put:
+      summary: Atualizar caso
+      description: Atualiza as informações de um caso existente.
+      tags: [Cases]
+      security:
+        - BearerAuth: []
       parameters:
         - in: path
           name: caseId
@@ -214,14 +243,24 @@ paths:
       responses:
         '200':
           description: Caso atualizado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Case'
+        '401':
+          description: Usuário não autenticado
+        '403':
+          description: Permissão negada
         '404':
           description: Caso não encontrado
         '500':
           description: Erro ao atualizar caso
-
     delete:
       summary: Deletar caso
+      description: Remove um caso existente.
       tags: [Cases]
+      security:
+        - BearerAuth: []
       parameters:
         - in: path
           name: caseId
@@ -231,6 +270,10 @@ paths:
       responses:
         '200':
           description: Caso deletado com sucesso
+        '401':
+          description: Usuário não autenticado
+        '403':
+          description: Permissão negada
         '404':
           description: Caso não encontrado
         '500':
@@ -239,9 +282,10 @@ paths:
   /api/evidence:
     post:
       summary: Adiciona uma nova evidência
+      description: Adiciona uma nova evidência associada a um caso, incluindo upload de arquivo.
       tags: [Evidências]
       security:
-        - bearerAuth: []
+        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -250,7 +294,7 @@ paths:
               $ref: '#/components/schemas/EvidenceRequest'
       responses:
         '200':
-          description: Evidência adicionada
+          description: Evidência adicionada com sucesso
           content:
             application/json:
               schema:
@@ -258,37 +302,181 @@ paths:
         '400':
           description: Dados inválidos
         '401':
-          description: Não autorizado
+          description: Usuário não autenticado
+        '403':
+          description: Permissão negada
+        '500':
+          description: Erro interno do servidor
+    get:
+      summary: Listar todas as evidências
+      description: Retorna uma lista de todas as evidências cadastradas.
+      tags: [Evidências]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Lista de evidências retornada com sucesso
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Evidence'
+        '401':
+          description: Usuário não autenticado
+        '403':
+          description: Permissão negada
         '500':
           description: Erro interno do servidor
 
-  /api/report:
-    post:
-      summary: Gera um relatório pericial para um caso
-      tags: [Relatório]
+  /api/evidence/{evidenceId}:
+    put:
+      summary: Atualizar evidência
+      description: Atualiza as informações de uma evidência existente.
+      tags: [Evidências]
+      security:
+        - BearerAuth: []
       parameters:
         - in: path
-          name: caseId
+          name: evidenceId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EvidenceRequest'
+      responses:
+        '200':
+          description: Evidência atualizada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Evidence'
+        '401':
+          description: Usuário não autenticado
+        '403':
+          description: Permissão negada
+        '404':
+          description: Evidência não encontrada
+        '500':
+          description: Erro ao atualizar evidência
+    delete:
+      summary: Deletar evidência
+      description: Remove uma evidência existente.
+      tags: [Evidências]
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: evidenceId
           required: true
           schema:
             type: string
       responses:
         '200':
-          description: Relatório gerado
-          content:
-            application/pdf:
-              schema:
-                type: string
-                format: binary
+          description: Evidência deletada com sucesso
+        '401':
+          description: Usuário não autenticado
+        '403':
+          description: Permissão negada
         '404':
-          description: Caso ou relatório não encontrado
+          description: Evidência não encontrada
         '500':
-          description: Erro ao gerar o relatório
+          description: Erro ao deletar evidência
 
-  /api/report/sign/{reportId}:
-    patch:
-      summary: Assina digitalmente um relatório
+  /api/report:
+    post:
+      summary: Criar um novo relatório pericial
+      description: Gera um novo relatório pericial associado a um caso.
       tags: [Relatório]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Report'
+      responses:
+        '201':
+          description: Relatório criado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Report'
+        '400':
+          description: Dados inválidos
+        '401':
+          description: Usuário não autenticado
+        '403':
+          description: Permissão negada
+        '500':
+          description: Erro ao criar relatório
+    get:
+      summary: Listar todos os relatórios
+      description: Retorna uma lista de todos os relatórios periciais cadastrados.
+      tags: [Relatório]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Lista de relatórios retornada com sucesso
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Report'
+        '401':
+          description: Usuário não autenticado
+        '403':
+          description: Permissão negada
+        '500':
+          description: Erro interno do servidor
+
+  /api/report/{reportId}:
+    put:
+      summary: Atualizar relatório
+      description: Atualiza as informações de um relatório pericial existente.
+      tags: [Relatório]
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: reportId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Report'
+      responses:
+        '200':
+          description: Relatório atualizado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Report'
+        '401':
+          description: Usuário não autenticado
+        '403':
+          description: Permissão negada
+        '404':
+          description: Relatório não encontrado
+        '500':
+          description: Erro ao atualizar relatório
+    delete:
+      summary: Deletar relatório
+      description: Remove um relatório pericial existente.
+      tags: [Relatório]
+      security:
+        - BearerAuth: []
       parameters:
         - in: path
           name: reportId
@@ -297,7 +485,40 @@ paths:
             type: string
       responses:
         '200':
-          description: Relatório assinado
+          description: Relatório deletado com sucesso
+        '401':
+          description: Usuário não autenticado
+        '403':
+          description: Permissão negada
+        '404':
+          description: Relatório não encontrado
+        '500':
+          description: Erro ao deletar relatório
+
+  /api/report/sign/{reportId}:
+    post:
+      summary: Assina digitalmente um relatório
+      description: Assina digitalmente um relatório pericial existente.
+      tags: [Relatório]
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: reportId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Relatório assinado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Report'
+        '401':
+          description: Usuário não autenticado
+        '403':
+          description: Permissão negada
         '404':
           description: Relatório não encontrado
         '500':

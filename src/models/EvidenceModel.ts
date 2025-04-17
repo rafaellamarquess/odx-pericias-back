@@ -3,7 +3,7 @@ import mongoose, { Document, Schema } from "mongoose";
 interface IEvidence extends Document {
   caso: string; 
   tipo: "imagem" | "texto";
-  categoria: string;
+  categoria: string; //(ex: "Imagem Digital", "Documento", "Testemunho", etc.)
   dataUpload: Date;
   vitima: "identificada" | "não identificada";
   sexo: "masculino" | "feminino" | "indeterminado";
