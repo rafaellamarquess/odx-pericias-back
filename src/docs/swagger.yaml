@@ -648,10 +648,6 @@ components:
         categoria:
           type: string
           example: "Radiografia Panorâmica"
-        dataUpload:
-          type: string
-          format: date-time
-          example: "2025-04-10T14:30:00Z"
         vitima:
           type: string
           enum: [identificada, não identificada]
@@ -676,7 +672,11 @@ components:
         laudo:
           type: string
           example: "Texto do laudo pericial"
-
+        file:
+          type: string
+          format: binary
+          description: Arquivo da evidência (imagem ou texto)
+        
 
     Report:
       type: object
