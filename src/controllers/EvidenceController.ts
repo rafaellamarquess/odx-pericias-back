@@ -6,85 +6,92 @@ import mongoose from "mongoose";
 
 export const EvidenceController = {
 
-  // Adicionar evidência
-  async createEvidence(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const { caseTitle} = req.params;
-      const { categoria, tipo, vitima, sexo, estadoCorpo, lesoes, coletadoPor, conteudo } = req.body;
-  
-      // Verifica tipo
-      const tiposValidos = ["imagem", "texto"];
-      if (!tipo || !tiposValidos.includes(tipo)) {
-        res.status(400).json({ msg: "Tipo de evidência inválido ou ausente. Use 'imagem' ou 'texto'." });
-        return;
-      }
-  
-      // Verifica campos obrigatórios comuns
-      if (!categoria || !vitima || !sexo || !estadoCorpo || !lesoes || !coletadoPor) {
-        res.status(400).json({ msg: "Todos os campos obrigatórios devem ser preenchidos: categoria, vitima, sexo, estadoCorpo, lesoes, coletadoPor." });
-        return;
-      }
-  
-      // Busca o caso pelo título
-      const foundCase = await Case.findOne({ titulo: caseTitle });
-      if (!foundCase) {
-        res.status(404).json({ msg: "Caso não encontrado com esse título." });
-        return;
-      }
-  
-      const caseId = foundCase._id;
-  
-      let evidence;
-  
-      if (tipo === "imagem") {
-        if (!req.file?.path) {
-          res.status(400).json({ msg: "Arquivo de imagem não enviado." });
-          return;
-        }
-  
-        const result = await cloudinary.uploader.upload(req.file.path, {
-          folder: "evidencias",
-          use_filename: true,
-          unique_filename: false
-        });
-  
-        evidence = await Evidence.create({
-          tipo: "imagem",
-          categoria,
-          vitima,
-          sexo,
-          estadoCorpo,
-          lesoes,
-          coletadoPor,
-          imagemURL: result.secure_url,
-          caso: caseId
-        });
-      }
-  
-      if (tipo === "texto") {
-        if (!conteudo) {
-          res.status(400).json({ msg: "Conteúdo textual obrigatório para evidência do tipo texto." });
-          return;
-        }
-  
-        evidence = await Evidence.create({
-          tipo: "texto",
-          categoria,
-          vitima,
-          sexo,
-          estadoCorpo,
-          lesoes,
-          coletadoPor,
-          conteudo,
-          caso: caseId
-        });
-      }
-  
-      res.status(200).json({ msg: "Evidência adicionada com sucesso.", evidence });
-    } catch (err) {
-      next(err);
+ // Criar evidência
+async createEvidence(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const {
+      categoria,
+      tipoEvidencia,
+      vitima,
+      sexo,
+      estadoCorpo,
+      lesoes,
+      coletadoPor,
+      conteudo,
+      casoId
+    } = req.body;
+
+    // Valida tipo
+    const tiposValidos = ["imagem", "texto"];
+    if (!tipoEvidencia || !tiposValidos.includes(tipoEvidencia)) {
+      res.status(400).json({ msg: "Tipo de evidência inválido ou ausente. Use 'imagem' ou 'texto'." });
+      return;
     }
-  },  
+
+    // Valida campos obrigatórios
+    if (!categoria || !vitima || !sexo || !estadoCorpo || !coletadoPor) {
+      res.status(400).json({ msg: "Todos os campos obrigatórios devem ser preenchidos: categoria, vitima, sexo, estadoCorpo, coletadoPor." });
+      return;
+    }
+
+    // Verifica se caso existe
+    const foundCase = await Case.findById(casoId);
+    if (!foundCase) {
+      res.status(404).json({ msg: "Caso não encontrado com esse ID." });
+      return;
+    }
+
+    let evidence;
+
+    if (tipoEvidencia === "imagem") {
+      if (!req.file?.path) {
+        res.status(400).json({ msg: "Arquivo de imagem não enviado." });
+        return;
+      }
+
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: "evidencias",
+        use_filename: true,
+        unique_filename: false
+      });
+
+      evidence = await Evidence.create({
+        tipo: "imagem",
+        categoria,
+        vitima,
+        sexo,
+        estadoCorpo,
+        lesoes,
+        coletadoPor,
+        imagemURL: result.secure_url,
+        caso: casoId
+      });
+    }
+
+    if (tipoEvidencia === "texto") {
+      if (!conteudo) {
+        res.status(400).json({ msg: "Conteúdo textual obrigatório para evidência do tipo texto." });
+        return;
+      }
+
+      evidence = await Evidence.create({
+        tipo: "texto",
+        categoria,
+        vitima,
+        sexo,
+        estadoCorpo,
+        lesoes,
+        coletadoPor,
+        conteudo,
+        caso: casoId
+      });
+    }
+
+    res.status(200).json({ msg: "Evidência adicionada com sucesso.", evidence });
+  } catch (err) {
+    next(err);
+  }
+},
 
   //Editar evidências
   async updateEvidence(req: Request, res: Response, next: NextFunction): Promise<void> {
