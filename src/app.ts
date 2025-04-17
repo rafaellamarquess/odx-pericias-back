@@ -13,8 +13,9 @@ const app = express();
 app.use(express.json());
 
 
+const frontEndUrl = process.env.FRONTEND_URL || "http://localhost:3000";
 app.use(cors({
-  origin: "https://odxpericias.netlify.app",
+  origin: frontEndUrl,
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true,
 }));
