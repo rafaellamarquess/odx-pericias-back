@@ -91,5 +91,35 @@ export const listUsers = async (req: Request, res: Response, next: NextFunction)
 
   //Editar Usuário
 
+  export const editarUsuario: express.RequestHandler = async(req: Request, res: Response, next: NextFunction):
+  Promise<void> =>{
+    try{
+      const {id} = req.params;
+      const {nome,email,senha,perfil,rg,cro} = req.body;
+
+      const usuario = await User.findById(id);
+      if(!usuario){
+        res.status(404).json({msg: "Usuario não encontrado"})
+        return;
+      }
+      if(rg && rg !== usuario.rg ){
+        usuario.rg = rg;
+      }
+      if(perfil == "Perito" && !cro){
+        res.status(400).json({msg: "CRO é obrigatório para perfil Perito"});
+        return;
+      }
+      if(email && email !== usuario.email){
+        const emailExistente = await User.findOne({email});
+        if(emailExistente){
+          res.status(400).json({msg: "email já existe"});
+          return;
+        }
+        usuario.email = email;
+      }
+    }
+   
+  }
+
   // Deletar Usuário
 };
