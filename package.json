@@ -7,7 +7,6 @@
         "build": "tsc",
         "postbuild": "cp -r src/docs dist/docs",
         "start": "node dist/server.js"
-        
     },
     "devDependencies": {
         "@types/bcryptjs": "^2.4.6",
@@ -37,5 +36,18 @@
         "swagger-jsdoc": "^6.2.8",
         "swagger-ui-express": "^5.0.1",
         "yamljs": "^0.3.0"
-    }
+    },
+    "description": "Este é um projeto backend para um sistema de gestão de casos forenses.",
+    "main": "index.js",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/rafaellamarquess/odx-pericias-back.git"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "bugs": {
+        "url": "https://github.com/rafaellamarquess/odx-pericias-back/issues"
+    },
+    "homepage": "https://github.com/rafaellamarquess/odx-pericias-back#readme"
 }
