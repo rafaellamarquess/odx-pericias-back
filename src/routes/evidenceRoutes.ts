@@ -7,7 +7,7 @@ import { Perfil } from "../models/UserModel";
 const router = express.Router();
 const multerUpload = multer({ dest: "uploads/" });
 
-router.post("/", checkPermissions([Perfil.ADMIN, Perfil.PERITO]),  multerUpload.single("file"), EvidenceController.createEvidence);
+router.post("/", checkPermissions([Perfil.ADMIN, Perfil.PERITO]),  multerUpload.single("arquivo"), EvidenceController.createEvidence);
 router.put("/update/:evidenceId", checkPermissions([Perfil.ADMIN, Perfil.PERITO]), EvidenceController.updateEvidence);
 router.delete("/delete/:evidenceId", checkPermissions([Perfil.ADMIN, Perfil.PERITO]), EvidenceController.deleteEvidence);
 router.get("/list", checkPermissions([Perfil.ADMIN, Perfil.PERITO]), EvidenceController.listEvidences);

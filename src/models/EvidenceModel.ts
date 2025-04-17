@@ -10,8 +10,8 @@ interface IEvidence extends Document {
   estadoCorpo: "inteiro" | "fragmentado" | "carbonizado" | "putrefacto" | "esqueleto";
   lesoes?: string;
   coletadoPor: mongoose.Types.ObjectId;
-  conteudo?: string; // se for texto
-  imagemURL?: string; // se for imagem
+  conteudo?: string; // salva o texto enviado
+  imagemURL?: string; //salva a url da imagem enviada 
   laudo?: string;
 }
 
