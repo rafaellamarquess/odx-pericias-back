@@ -637,10 +637,10 @@ components:
     EvidenceRequest:
       type: object
       properties:
-        file:
+        caso:
           type: string
-          format: binary
-          description: Arquivo da evidência (imagem ou texto)
+          description: Título do Caso Relacionado
+          example: "Caso de identificação de vítima"
         tipoEvidencia:
           type: string
           enum: [imagem, texto]
@@ -648,6 +648,10 @@ components:
         categoria:
           type: string
           example: "Radiografia Panorâmica"
+        dataUpload:
+          type: string
+          format: date-time
+          example: "2025-04-10T14:30:00Z"
         vitima:
           type: string
           enum: [identificada, não identificada]
@@ -659,19 +663,20 @@ components:
         estadoCorpo:
           type: string
           enum: [inteiro, fragmentado, carbonizado, putrefacto, esqueleto]
-          example: "carbonizado"
+          example: "inteiro"
         lesoes:
           type: string
-          example: "Ausência de dentes superiores"
+          example: "Fratura no osso maxilar"
         conteudo:
           type: string
-          example: "Texto de evidência se for do tipo texto"
-        coletado por:
+          example: "Relatório textual sobre a arcada dentária"
+        coletadoPor:
           type: string
           example: "Dra. Helena Costa"
-        casoId:
+        laudo:
           type: string
-          example: "67fb107daf5f09812475534f"
+          example: "Texto do laudo pericial"
+
 
     Report:
       type: object
