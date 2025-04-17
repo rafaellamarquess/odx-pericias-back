@@ -4,6 +4,7 @@ import User, { IUser } from "../models/UserModel";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { CustomRequest } from "../types/CustomRequest";
+import { getUserFromToken } from "../utils/authUtils";
 
 // Função para login
 export const login: express.RequestHandler = async ( req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -43,86 +44,74 @@ export const logout: express.RequestHandler = (req: Request, res: Response): voi
 
 
 // Função para retornar os dados do usuário logado
-export const getLoggedUser = async (req: CustomRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getLoggedUser = async ( req: CustomRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const user = req.user as IUser; // Assert that user is of type IUser
-    if (!user || typeof user._id !== "string") {
-      res.status(404).json({ msg: "Usuário não encontrado" });
-      return;
-    }
-    if (!user) {
-      res.status(404).json({ msg: "Usuário não encontrado" });
-      return;
-    }
+    const user = await getUserFromToken(req.headers.authorization);
+    req.user = user;
+
+    const userData = user as IUser;
+    const userId =
+      userData._id ? (typeof userData._id === "object" ? userData._id.toString() : userData._id) : null;
 
     res.status(200).json({
-      id: user._id.toString(),
-      nome: user.nome,
-      cro: user.cro || "",
-      tipo: user.perfil.toLowerCase(),
+      id: userId,
+      nome: userData.nome,
+      cro: userData.cro || "",
+      tipo: userData.perfil.toLowerCase(),
     });
-  } catch (err: unknown) {
-    next(err);
+  } catch (err: any) {
+    if (err.status && err.msg) {
+      res.status(err.status).json({ msg: err.msg });
+    } else {
+      res.status(500).json({ msg: "Erro no servidor." });
+    }
   }
 };
-
-
 
 //Redefinir senha ou email
 export const forgotPassword: express.RequestHandler = async (req: CustomRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { newPassword, oldPassword, newEmail } = req.body;
-
-    // Verificar se foi passado senha ou e-mail
     if (!newPassword && !newEmail) {
-      res.status(400).json({ msg: "É necessário fornecer uma senha ou um e-mail para atualização." });
-      return;
+     res.status(400).json({ msg: "É necessário fornecer uma senha ou um e-mail para atualização." });
     }
 
-    if (!req.user) {
-      res.status(401).json({ msg: "Usuário não autenticado." });
-      return;
-    }
-    const userId = req.user._id;
-    const usuario = await User.findById(userId);
+    const user = await getUserFromToken(req.headers.authorization);
+    req.user = user;
 
-    if (!usuario) {
-      res.status(404).json({ msg: "Usuário não encontrado." });
-      return;
-    }
-
-    // Se for alteração de senha
+    // Atualizar senha, se necessário
     if (newPassword) {
       if (!oldPassword) {
-        res.status(400).json({ msg: "Senha antiga é necessária para a alteração de senha." });
-        return;
+       res.status(400).json({ msg: "Senha antiga é necessária para a alteração de senha." });
       }
 
-      const isMatch = await bcrypt.compare(oldPassword, usuario.senha);
+      const isMatch = await bcrypt.compare(oldPassword, user.senha);
       if (!isMatch) {
         res.status(401).json({ msg: "Senha antiga inválida." });
-        return;
       }
 
-      const hashedPassword = await bcrypt.hash(newPassword, 10);
-      usuario.senha = hashedPassword;
+      user.senha = await bcrypt.hash(newPassword, 10);
     }
 
-    // Se for alteração de e-mail
+    // Atualizar e-mail, se necessário
     if (newEmail) {
       const existingUser = await User.findOne({ email: newEmail });
       if (existingUser) {
         res.status(400).json({ msg: "Este e-mail já está em uso." });
-        return;
       }
 
-      usuario.email = newEmail;
+      user.email = newEmail;
     }
-    await usuario.save();
 
+    await user.save();
     res.status(200).json({ msg: "Informações atualizadas com sucesso." });
-  } catch (err) {
-    next(err);
+
+  } catch (err: any) {
+    if (err.status && err.msg) {
+      res.status(err.status).json({ msg: err.msg });
+    } else {
+      next(err); // repassa erro desconhecido
+    }
   }
 };
 
