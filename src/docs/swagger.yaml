@@ -309,10 +309,8 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-security:
-  - BearerAuth: []
 
-schemas:
+  schemas:
     Case:
       type: object
       properties:
@@ -334,77 +332,171 @@ schemas:
           format: date
           example: "2025-04-12"
 
+    CaseRequest:
+      type: object
+      properties:
+        titulo:
+          type: string
+          example: "Caso João da Silva"
+        descricao:
+          type: string
+          example: "Caso de desaparecimento ocorrido em março de 2025"
+        status:
+          type: string
+          enum: [Em andamento, Finalizado, Arquivado]
+          example: "Em andamento"
+        responsavel:
+          type: string
+          example: "Dra. Ana Paula"
+
+    CaseUpdate:
+      type: object
+      properties:
+        titulo:
+          type: string
+          example: "Caso atualizado João da Silva"
+        descricao:
+          type: string
+          example: "Descrição atualizada do caso"
+        status:
+          type: string
+          enum: [Em andamento, Finalizado, Arquivado]
+          example: "Finalizado"
+        responsavel:
+          type: string
+          example: "Dra. Ana Paula"
+
     Evidence:
       type: object
       properties:
         caso:
           type: string
           description: Título do caso relacionado
-        tipo evidencia:
+          example: "Caso João da Silva"
+        tipoEvidencia:
           type: string
           enum: [imagem, texto]
+          example: "imagem"
         categoria:
           type: string
           example: "Radiografia Panorâmica"
         dataUpload:
           type: string
           format: date-time
+          example: "2025-04-10T14:30:00Z"
         vitima:
           type: string
           enum: [identificada, não identificada]
+          example: "identificada"
         sexo:
           type: string
           enum: [masculino, feminino, indeterminado]
+          example: "masculino"
         estadoCorpo:
           type: string
           enum: [inteiro, fragmentado, carbonizado, putrefacto, esqueleto]
+          example: "inteiro"
         lesoes:
           type: string
+          example: "Fratura no osso maxilar"
         conteudo:
           type: string
+          example: "Relatório textual sobre a arcada dentária"
         imagemURL:
           type: string
           format: uri
+          example: "https://res.cloudinary.com/exemplo/image/upload/v1689371938/imagem.jpg"
         coletadoPor:
           type: string
           example: "Dra. Helena Costa"
         laudo:
           type: string
+          example: "texto do laudo pericial"
+
+    EvidenceRequest:
+      type: object
+      properties:
+        arquivo:
+          type: string
+          format: binary
+          description: Arquivo da evidência (imagem ou texto)
+        tipoEvidencia:
+          type: string
+          enum: [imagem, texto]
+          example: "imagem"
+        categoria:
+          type: string
+          example: "Radiografia Panorâmica"
+        vitima:
+          type: string
+          enum: [identificada, não identificada]
+          example: "identificada"
+        sexo:
+          type: string
+          enum: [masculino, feminino, indeterminado]
+          example: "masculino"
+        estadoCorpo:
+          type: string
+          enum: [inteiro, fragmentado, carbonizado, putrefacto, esqueleto]
+          example: "carbonizado"
+        lesoes:
+          type: string
+          example: "Ausência de dentes superiores"
+        conteudo:
+          type: string
+          example: "Texto de evidência se for do tipo texto"
+        casoId:
+          type: string
+          example: "662105eaf10c8c001fa1d749"
 
     Report:
       type: object
       properties:
         titulo:
           type: string
+          example: "Laudo pericial do Caso João da Silva"
         descricao:
           type: string
+          example: "Laudo contendo análises odontológicas detalhadas"
         objetoPericia:
           type: string
+          example: "Identificação humana por meio de exames odontológicos"
         analiseTecnica:
           type: string
+          example: "Análise das evidências fornecidas com foco em características dentárias únicas"
         metodoUtilizado:
           type: string
+          example: "Comparação radiográfica e análise de arcada dentária"
         destinatario:
           type: string
+          example: "Polícia Civil de Pernambuco"
         materiaisUtilizados:
           type: string
+          example: "Radiografias, fotografias intraorais"
         examesRealizados:
           type: string
+          example: "Exame radiográfico, exame clínico"
         consideracoesTecnicoPericiais:
           type: string
+          example: "Não foram identificadas discrepâncias entre as evidências e os dados fornecidos"
         conclusaoTecnica:
           type: string
+          example: "A vítima foi identificada como João da Silva com alto grau de certeza"
         caso:
           type: string
+          example: "662105eaf10c8c001fa1d749"
         evidencias:
           type: array
           items:
             type: string
+            example: "661fdac56e1b1700170e3d4a"
         criadoEm:
           type: string
           format: date-time
+          example: "2025-04-15T10:00:00Z"
         assinadoDigitalmente:
           type: boolean
+          example: true
 
     User:
       type: object
@@ -415,7 +507,7 @@ schemas:
         email:
           type: string
           format: email
-          example: julina.costa@email.com
+          example: "juliana.costa@email.com"
         senha:
           type: string
           example: "senha"
@@ -429,5 +521,7 @@ schemas:
       properties:
         email:
           type: string
+          example: "roberta.silva@email.com"
         senha:
           type: string
+          example: "senha"
