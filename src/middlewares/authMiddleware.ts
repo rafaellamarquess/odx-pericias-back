@@ -27,6 +27,7 @@ export const authenticateToken = async (req: CustomRequest, res: Response, next:
     req.user = user; 
     return next();
   } catch (error) {
-     res.status(401).json({ message: "Token inválido." }); // 'return' também aqui
+     res.status(401).json({ message: "Token inválido." });
+     return;
   }
 };
