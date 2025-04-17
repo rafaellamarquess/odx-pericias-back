@@ -7,6 +7,7 @@ interface ICase extends Document {
   status: "Em andamento" | "Finalizado" | "Arquivado";
   responsavel: string;
   dataCriacao: Date;
+  local: string;
   updateStatus(status: string): void;
 }
 
@@ -15,7 +16,8 @@ const CaseSchema = new Schema<ICase>({
   descricao: { type: String, required: true },
   status: { type: String, enum: ["Em andamento", "Finalizado", "Arquivado"], required: true },
   responsavel: { type: String, ref: "User", required: true },
-  dataCriacao: { type: Date, default: Date.now }
+  dataCriacao: { type: Date, default: Date.now },
+  local: { type: String, required: true }
 });
 
 CaseSchema.methods.updateStatus = function (newStatus: string): void {

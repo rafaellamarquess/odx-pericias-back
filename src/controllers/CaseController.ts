@@ -20,14 +20,14 @@ export const CaseController = {
          res.status(403).json({ msg: "Apenas usuários com perfil 'Admin' ou 'Perito' podem cadastrar casos." });
         }
   
-        const { titulo, descricao, responsavel, dataCriacao } = req.body;
+        const { titulo, descricao, responsavel, dataCriacao, local } = req.body;
   
         const newCase = new Case({
           titulo,
           descricao,
           responsavel,
           dataCriacao: new Date(dataCriacao),
-          
+          local,
           status: "Em andamento",
         });
   
@@ -94,6 +94,7 @@ export const CaseController = {
         dataFim,
         status,
         responsavel,
+        local,
         page = "1",
         limit = "10"
       } = req.query;

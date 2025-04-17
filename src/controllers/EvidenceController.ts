@@ -9,7 +9,7 @@ export const EvidenceController = {
   async addEvidence(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { caseTitle, tipo } = req.params;
-      const { categoria, vitima, sexo, estadoCorpo, lesoes, local, coletadoPor, conteudo } = req.body;
+      const { categoria, vitima, sexo, estadoCorpo, lesoes, coletadoPor, conteudo } = req.body;
 
       // Busca o caso pelo título
       const foundCase = await Case.findOne({ titulo: caseTitle });
@@ -37,7 +37,6 @@ export const EvidenceController = {
           sexo,
           estadoCorpo,
           lesoes,
-          local,
           coletadoPor,
           imagemURL: result.secure_url
         });
@@ -51,7 +50,6 @@ export const EvidenceController = {
           sexo,
           estadoCorpo,
           lesoes,
-          local,
           coletadoPor,
           conteudo
         });
