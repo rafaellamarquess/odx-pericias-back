@@ -637,7 +637,7 @@ components:
     EvidenceRequest:
       type: object
       properties:
-        arquivo:
+        file:
           type: string
           format: binary
           description: Arquivo da evidência (imagem ou texto)
@@ -668,7 +668,7 @@ components:
           example: "Texto de evidência se for do tipo texto"
         casoId:
           type: string
-          example: "662105eaf10c8c001fa1d749"
+          example: "67fb107daf5f09812475534f"
 
     Report:
       type: object
