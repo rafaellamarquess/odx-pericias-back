@@ -12,13 +12,14 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 
-app.use(cors());
+
 app.use(cors({
   origin: "https://odxpericias.netlify.app",
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true,
 }));
 
+app.options("*", cors());
 
 const swaggerDocument = YAML.load(path.join(__dirname, './docs/swagger.yaml'));
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
