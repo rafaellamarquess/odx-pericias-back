@@ -552,6 +552,9 @@ components:
           type: string
           format: date
           example: "2025-04-12"
+        codigoReferencia:
+          type: string
+          example: "CR-2025-001"
 
     CaseRequest:
       type: object
@@ -569,6 +572,9 @@ components:
         responsavel:
           type: string
           example: "Dra. Ana Paula"
+        codigoReferencia:
+          type: string
+          example: "CR-2025-001"
 
     CaseUpdate:
       type: object
@@ -586,6 +592,9 @@ components:
         responsavel:
           type: string
           example: "Dra. Ana Paula"
+        codigoReferencia:
+          type: string
+          example: "CR-2025-001"
 
     Evidence:
       type: object
