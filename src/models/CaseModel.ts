@@ -17,8 +17,8 @@ const CaseSchema = new Schema<ICase>({
   status: { type: String, enum: ["Em andamento", "Finalizado", "Arquivado"], required: true },
   responsavel: { type: String, ref: "User", required: true },
   dataCriacao: { type: Date, default: Date.now },
-  casoReferencia: { type: String, required: true, unique: true }, // Adiciona o campo de referência único
-  evidencias: [{ type: Schema.Types.ObjectId, ref: "Evidence" }] // Relacionamento com a coleção Evidence
+  casoReferencia: { type: String, required: true, unique: true }, 
+  evidencias: [{ type: Schema.Types.ObjectId, ref: "Evidence" }] 
 });
 
 const Case = mongoose.model<ICase>("Case", CaseSchema);

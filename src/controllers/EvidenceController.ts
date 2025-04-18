@@ -30,7 +30,7 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
 
     // Valida campos obrigatórios
     if (!categoria || !vitima || !sexo || !estadoCorpo || !coletadoPor || !casoReferencia) {
-      res.status(400).json({ msg: "Todos os campos obrigatórios devem ser preenchidos: categoria, vitima, sexo, estadoCorpo, coletadoPorNome, codigoReferencia." });
+      res.status(400).json({ msg: "Todos os campos obrigatórios devem ser preenchidos: categoria, vitima, sexo, estadoCorpo, coletadoPor, casoReferencia." });
       return;
     }
 
@@ -64,7 +64,7 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
         lesoes,
         coletadoPor,
         imagemURL: result.secure_url,
-        casoReferencia // ✅ referenciando apenas pelo código
+        casoReferencia
       });
     }
 
@@ -83,8 +83,19 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
         lesoes,
         coletadoPor,
         conteudo,
-        casoReferencia // ✅ idem aqui
+        casoReferencia
       });
+    }
+
+    // Atualiza o caso para adicionar a evidência ao array
+    if (evidence) {
+      await Case.updateOne(
+        { casoReferencia },
+        { $push: { evidencias: evidence._id } }
+      );
+    } else {
+      res.status(500).json({ msg: "Erro ao criar evidência." });
+      return;
     }
 
     res.status(200).json({ msg: "Evidência adicionada com sucesso.", evidence });
