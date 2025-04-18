@@ -7,108 +7,96 @@ import mongoose from "mongoose";
 
 export const ReportController = {
   
-async createReport(req: Request, res: Response): Promise<void> {
-  try {
-    const {
-      titulo,
-      descricao,
-      objetoPericia,
-      analiseTecnica,
-      metodoUtilizado,
-      destinatario,
-      materiaisUtilizados,
-      examesRealizados,
-      consideracoesTecnicoPericiais,
-      conclusaoTecnica,
-      caso: casoId,
-      evidencias: evidenciasIds
-    } = req.body;
-
-    // Verifica se o caso existe
-    const caso = await Case.findById(casoId).populate({
-      path: 'evidencias', // Popula as evidências
-      populate: {
-        path: 'coletadoPor', // Popula o coletador de cada evidência
-        model: 'User',
-        select: 'nome' // Seleciona o nome do perito (coletador)
+  async createReport(req: Request, res: Response): Promise<void> {
+    try {
+      const {
+        titulo,
+        descricao,
+        objetoPericia,
+        analiseTecnica,
+        metodoUtilizado,
+        destinatario,
+        materiaisUtilizados,
+        examesRealizados,
+        consideracoesTecnicoPericiais,
+        conclusaoTecnica,
+        casoReferencia,
+        evidencias: evidenciasIds
+      } = req.body;
+  
+      // Verifica se o caso existe com base no código de referência
+      const caso = await Case.findOne({ codigoReferencia: casoReferencia });
+      if (!caso) {
+        res.status(404).json({ msg: 'Caso não encontrado com esse código de referência.' });
+        return;
       }
-    });
-
-    if (!caso) {
-      res.status(404).json({ msg: 'Caso não encontrado.' });
-      return;
+  
+      // Verifica se as evidências passadas existem
+      const evidencias = await Evidence.find({ '_id': { $in: evidenciasIds } }).exec();
+  
+      if (evidencias.length !== evidenciasIds.length) {
+        res.status(404).json({ msg: 'Uma ou mais evidências não foram encontradas.' });
+        return;
+      }
+  
+      // Criação do relatório
+      const report = new Report({
+        titulo,
+        descricao,
+        objetoPericia,
+        analiseTecnica,
+        metodoUtilizado,
+        destinatario,
+        materiaisUtilizados,
+        examesRealizados,
+        consideracoesTecnicoPericiais,
+        conclusaoTecnica,
+        caso: caso._id,
+        evidencias: evidencias.map(e => e._id),
+        assinadoDigitalmente: false
+      });
+  
+      await report.save();
+  
+      // Gerando o PDF com Puppeteer
+      const browser = await puppeteer.launch();
+      const page = await browser.newPage();
+  
+      // Gerar o HTML para o PDF com base nos dados do relatório e evidências
+      const evidenciasHtml = evidencias.map(e => `
+        <div style="margin-bottom: 20px;">
+          <h4>Evidência (${e.tipo}) - ${e.categoria}</h4>
+          ${e.tipo === "imagem" ? `<img src="${e.imagemURL}" style="max-width: 300px;" />` : `<p>${e.conteudo}</p>`}
+          <p><strong>Coletado por:</strong> ${e.coletadoPorNome || "Desconhecido"}</p>
+        </div>
+      `).join("");
+  
+      const htmlContent = `
+        <h1>Relatório de Perícia</h1>
+        <h2>${titulo}</h2>
+        <p><strong>Descrição:</strong> ${descricao}</p>
+        <p><strong>Objeto da Perícia:</strong> ${objetoPericia}</p>
+        <p><strong>Análise Técnica:</strong> ${analiseTecnica}</p>
+        <p><strong>Método Utilizado:</strong> ${metodoUtilizado}</p>
+        <p><strong>Destinatário:</strong> ${destinatario}</p>
+        <p><strong>Materiais Utilizados:</strong> ${materiaisUtilizados}</p>
+        <p><strong>Exames Realizados:</strong> ${examesRealizados}</p>
+        <p><strong>Considerações Técnicas Periciais:</strong> ${consideracoesTecnicoPericiais}</p>
+        <p><strong>Conclusão Técnica:</strong> ${conclusaoTecnica}</p>
+        <h3>Evidências:</h3>
+        ${evidenciasHtml}
+      `;
+  
+      await page.setContent(htmlContent);
+      const pdfBuffer = await page.pdf({ format: 'A4' });
+  
+      res.status(200).json({ msg: 'Relatório criado com sucesso.', report, pdf: pdfBuffer });
+  
+      await browser.close();
+    } catch (error) {
+      res.status(500).json({ msg: 'Erro ao gerar o relatório.', error });
     }
-
-    // Verifica se as evidências passadas existem
-    const evidencias = await Evidence.find({ '_id': { $in: evidenciasIds } }).populate({
-      path: 'coletadoPor', // Popula o coletador de cada evidência
-      model: 'User',
-      select: 'nome'
-    }).exec();
-
-    if (evidencias.length !== evidenciasIds.length) {
-      res.status(404).json({ msg: 'Uma ou mais evidências não encontradas.' });
-      return;
-    }
-
-    // Criação do relatório
-    const report = new Report({
-      titulo,
-      descricao,
-      objetoPericia,
-      analiseTecnica,
-      metodoUtilizado,
-      destinatario,
-      materiaisUtilizados,
-      examesRealizados,
-      consideracoesTecnicoPericiais,
-      conclusaoTecnica,
-      caso: caso._id,
-      evidencias: evidencias.map(e => e._id),
-      assinadoDigitalmente: false
-    });
-
-    await report.save();
-
-    // Gerando o PDF com Puppeteer
-    const browser = await puppeteer.launch();
-    const page = await browser.newPage();
-
-    // Gerar o HTML para o PDF com base nos dados do relatório e evidências
-    const evidenciasHtml = evidencias.map(e => `
-      <div style="margin-bottom: 20px;">
-        <h4>Evidência (${e.tipo}) - ${e.categoria}</h4>
-        ${e.tipo === "imagem" ? `<img src="${e.imagemURL}" style="max-width: 300px;" />` : `<p>${e.conteudo}</p>`}
-        <p><strong>Coletado por:</strong> ${typeof e.coletadoPor === 'object' && 'nome' in e.coletadoPor ? e.coletadoPor.nome : "Desconhecido"}</p>
-      </div>
-    `).join("");
-
-    const htmlContent = `
-      <h1>Relatório de Perícia</h1>
-      <h2>${titulo}</h2>
-      <p><strong>Descrição:</strong> ${descricao}</p>
-      <p><strong>Objeto da Perícia:</strong> ${objetoPericia}</p>
-      <p><strong>Análise Técnica:</strong> ${analiseTecnica}</p>
-      <p><strong>Metodo Utilizado:</strong> ${metodoUtilizado}</p>
-      <p><strong>Destinatário:</strong> ${destinatario}</p>
-      <p><strong>Materiais Utilizados:</strong> ${materiaisUtilizados}</p>
-      <p><strong>Exames Realizados:</strong> ${examesRealizados}</p>
-      <p><strong>Considerações Técnicas Periciais:</strong> ${consideracoesTecnicoPericiais}</p>
-      <p><strong>Conclusão Técnica:</strong> ${conclusaoTecnica}</p>
-      <h3>Evidências:</h3>
-      ${evidenciasHtml}
-    `;
-
-    await page.setContent(htmlContent);
-    const pdfBuffer = await page.pdf({ format: 'A4' });
-
-    res.status(200).json({ msg: 'Relatório criado com sucesso.', report, pdf: pdfBuffer });
-
-    await browser.close();
-  } catch (error) {
-    res.status(500).json({ msg: 'Erro ao gerar o relatório.', error });
-  }
-},  
+  },  
 
   async assinarDigitalmente(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
