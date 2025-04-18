@@ -16,7 +16,7 @@ interface IEvidence extends Document {
 }
 
 const EvidenceSchema = new Schema<IEvidence>({
-  casoReferencia: { type: String, unique: true, required: true },
+  casoReferencia: { type: String, required: true },
   tipo: { type: String, enum: ["imagem", "texto"], required: true },
   categoria: { type: String, required: true },
   dataUpload: { type: Date, default: Date.now },
