@@ -5,7 +5,8 @@ import mongoose from "mongoose";
 import { User } from "../models/UserModel";
 
 export const CaseController = {
-// Criar novo caso
+
+  // Criar novo caso
 async createCase(req: CustomRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const user = req.user;

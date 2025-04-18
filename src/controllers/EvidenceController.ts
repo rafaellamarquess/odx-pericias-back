@@ -5,7 +5,7 @@ import { Case } from "../models/CaseModel"; // Importando o modelo de "Case"
 import mongoose from "mongoose";
 
 export const EvidenceController = {
-
+  
 // Criar evidência
 async createEvidence(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
@@ -34,7 +34,7 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
       return;
     }
 
-    // Verifica se caso existe pela referência
+    // Verifica se o caso existe pela referência
     const foundCase = await Case.findOne({ casoReferencia });
     if (!foundCase) {
       res.status(404).json({ msg: "Caso não encontrado com esse código de referência." });
@@ -64,7 +64,7 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
         lesoes,
         coletadoPor,
         imagemURL: result.secure_url,
-        caso: foundCase._id
+        casoReferencia // ✅ referenciando apenas pelo código
       });
     }
 
@@ -83,7 +83,7 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
         lesoes,
         coletadoPor,
         conteudo,
-        caso: foundCase._id
+        casoReferencia // ✅ idem aqui
       });
     }
 

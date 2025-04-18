@@ -603,10 +603,10 @@ components:
     Evidence:
       type: object
       properties:
-        caso:
+        casoReferencia:
           type: string
-          description: Título do caso relacionado
-          example: "Caso João da Silva"
+          description: Código de Referência do Caso Relacionado
+          example: "CR-2025-001"
         tipoEvidencia:
           type: string
           enum: [imagem, texto]
