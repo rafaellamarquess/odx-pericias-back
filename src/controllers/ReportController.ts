@@ -67,7 +67,7 @@ export const ReportController = {
         <div style="margin-bottom: 20px;">
           <h4>Evidência (${e.tipo}) - ${e.categoria}</h4>
           ${e.tipo === "imagem" ? `<img src="${e.imagemURL}" style="max-width: 300px;" />` : `<p>${e.conteudo}</p>`}
-          <p><strong>Coletado por:</strong> ${e.coletadoPorNome || "Desconhecido"}</p>
+          <p><strong>Coletado por:</strong> ${e.coletadoPor || "Desconhecido"}</p>
         </div>
       `).join("");
   
