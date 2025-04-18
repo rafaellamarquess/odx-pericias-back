@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { Case } from "../models/CaseModel";
 import { CustomRequest } from "../types/CustomRequest";
 import mongoose from "mongoose";
+import { User } from "../models/UserModel";
 
 export const CaseController = {
   // Criar novo caso
@@ -31,6 +32,14 @@ export const CaseController = {
         return;
       }
   
+      // Busca o nome do responsável
+      const responsavelUser = await User.findById(responsavel).select("nome");
+  
+      if (!responsavelUser) {
+        res.status(404).json({ msg: "Responsável não encontrado." });
+        return;
+      }
+  
       const parsedDate = new Date(dataCriacao);
       if (isNaN(parsedDate.getTime())) {
         res.status(400).json({ msg: "Data de criação inválida." });
@@ -40,9 +49,10 @@ export const CaseController = {
       const newCase = new Case({
         titulo,
         descricao,
-        responsavel,
+        responsavel, // ID
+        responsavelNome: responsavelUser.nome, // Nome
         dataCriacao: parsedDate,
-        casoReferencia, // Novo campo
+        casoReferencia,
         status: "Em andamento",
       });
   
@@ -52,7 +62,7 @@ export const CaseController = {
     } catch (err) {
       next(err);
     }
-  },
+  },  
 
   // Listar apenas os títulos dos casos (para dropdown)
   async getCaseTitle(req: Request, res: Response, next: NextFunction) {
