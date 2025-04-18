@@ -6,7 +6,7 @@ import mongoose from "mongoose";
 
 export const EvidenceController = {
 
- // Criar evidência
+// Criar evidência
 async createEvidence(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const {
@@ -16,9 +16,9 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
       sexo,
       estadoCorpo,
       lesoes,
-      coletadoPor,
+      coletadoPorNome,
       conteudo,
-      casoId
+      codigoReferencia
     } = req.body;
 
     // Valida tipo
@@ -29,15 +29,15 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
     }
 
     // Valida campos obrigatórios
-    if (!categoria || !vitima || !sexo || !estadoCorpo || !coletadoPor) {
-      res.status(400).json({ msg: "Todos os campos obrigatórios devem ser preenchidos: categoria, vitima, sexo, estadoCorpo, coletadoPor." });
+    if (!categoria || !vitima || !sexo || !estadoCorpo || !coletadoPorNome || !codigoReferencia) {
+      res.status(400).json({ msg: "Todos os campos obrigatórios devem ser preenchidos: categoria, vitima, sexo, estadoCorpo, coletadoPorNome, codigoReferencia." });
       return;
     }
 
-    // Verifica se caso existe
-    const foundCase = await Case.findById(casoId);
+    // Verifica se caso existe pela referência
+    const foundCase = await Case.findOne({ codigoReferencia });
     if (!foundCase) {
-      res.status(404).json({ msg: "Caso não encontrado com esse ID." });
+      res.status(404).json({ msg: "Caso não encontrado com esse código de referência." });
       return;
     }
 
@@ -62,9 +62,9 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
         sexo,
         estadoCorpo,
         lesoes,
-        coletadoPor,
+        coletadoPorNome,
         imagemURL: result.secure_url,
-        caso: casoId
+        caso: foundCase._id
       });
     }
 
@@ -81,9 +81,9 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
         sexo,
         estadoCorpo,
         lesoes,
-        coletadoPor,
+        coletadoPorNome,
         conteudo,
-        caso: casoId
+        caso: foundCase._id
       });
     }
 

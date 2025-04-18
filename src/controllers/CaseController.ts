@@ -4,120 +4,121 @@ import { CustomRequest } from "../types/CustomRequest";
 import mongoose from "mongoose";
 
 export const CaseController = {
-
-    // Criar novo caso
-    async createCase(req: CustomRequest, res: Response, next: NextFunction): Promise<void> {
-      try {
-        const user = req.user;
-    
-        if (!user) {
-          res.status(401).json({ msg: "Usuário não autenticado." });
-          return;
-        }
-    
-        if (user.perfil !== "Admin" && user.perfil !== "Perito") {
-          res.status(403).json({ msg: "Apenas usuários com perfil 'Admin' ou 'Perito' podem cadastrar casos." });
-          return;
-        }
-    
-        const { titulo, descricao, responsavel, dataCriacao } = req.body;
-    
-        if (!titulo || !descricao || !responsavel || !dataCriacao) {
-          res.status(400).json({ msg: "Todos os campos são obrigatórios: título, descrição, responsável e data de criação." });
-          return;
-        }
-    
-        if (!mongoose.Types.ObjectId.isValid(responsavel)) {
-          res.status(400).json({ msg: "ID do responsável inválido." });
-          return;
-        }
-    
-        const parsedDate = new Date(dataCriacao);
-        if (isNaN(parsedDate.getTime())) {
-          res.status(400).json({ msg: "Data de criação inválida." });
-          return;
-        }
-    
-        const newCase = new Case({
-          titulo,
-          descricao,
-          responsavel,
-          dataCriacao: parsedDate,
-          status: "Em andamento",
-        });
-    
-        await newCase.save();
-        res.status(201).json({ msg: "Caso cadastrado com sucesso!", caso: newCase });
-    
-      } catch (err) {
-        next(err);
+  // Criar novo caso
+  async createCase(req: CustomRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const user = req.user;
+  
+      if (!user) {
+        res.status(401).json({ msg: "Usuário não autenticado." });
+        return;
       }
-    },    
-
-    // Listar apenas os títulos dos casos (para dropdown)
-    async getCaseTitle(req: Request, res: Response, next: NextFunction) {
-      try {
-        const titulos = await Case.find({}, "titulo"); // Busca apenas o campo 'titulo'
-        res.status(200).json(titulos);
-      } catch (err) {
-        next(err);
+  
+      if (user.perfil !== "Admin" && user.perfil !== "Perito") {
+        res.status(403).json({ msg: "Apenas usuários com perfil 'Admin' ou 'Perito' podem cadastrar casos." });
+        return;
       }
-    },
+  
+      const { titulo, descricao, responsavel, dataCriacao, casoReferencia } = req.body;
+  
+      if (!titulo || !descricao || !responsavel || !dataCriacao || !casoReferencia) {
+        res.status(400).json({ msg: "Todos os campos são obrigatórios: título, descrição, responsável, data de criação e código de referência." });
+        return;
+      }
+  
+      if (!mongoose.Types.ObjectId.isValid(responsavel)) {
+        res.status(400).json({ msg: "ID do responsável inválido." });
+        return;
+      }
+  
+      const parsedDate = new Date(dataCriacao);
+      if (isNaN(parsedDate.getTime())) {
+        res.status(400).json({ msg: "Data de criação inválida." });
+        return;
+      }
+  
+      const newCase = new Case({
+        titulo,
+        descricao,
+        responsavel,
+        dataCriacao: parsedDate,
+        casoReferencia, // Novo campo
+        status: "Em andamento",
+      });
+  
+      await newCase.save();
+      res.status(201).json({ msg: "Caso cadastrado com sucesso!", caso: newCase });
+  
+    } catch (err) {
+      next(err);
+    }
+  },
 
-    //Editar Caso
-    async updateCase(req: Request, res: Response, next: NextFunction): Promise<void> {
-      try {
-        const { caseId } = req.params;
-        const allowedFields = [
-          "titulo",
-          "descricao",
-          "status",
-          "dataInicio",
-          "dataFim",
-          "categoria",
-          "observacoes"
-        ];
-        const updateFields: any = {};
-    
-        // Somente os campos permitidos serão atualizados
-        allowedFields.forEach((field) => {
-          if (req.body[field] !== undefined) {
-            updateFields[field] = req.body[field];
-          }
-        });
-    
-        const casoAtualizado = await Case.findByIdAndUpdate(caseId, updateFields, { new: true });
-    
-        if (!casoAtualizado) {
-          res.status(404).json({ msg: "Caso não encontrado." });
-          return;
+  // Listar apenas os títulos dos casos (para dropdown)
+  async getCaseTitle(req: Request, res: Response, next: NextFunction) {
+    try {
+      const titulos = await Case.find({}, "titulo casoReferencia"); // Busca 'titulo' e 'casoReferencia'
+      res.status(200).json(titulos);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  // Editar Caso
+  async updateCase(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { caseId } = req.params;
+      const allowedFields = [
+        "titulo",
+        "descricao",
+        "status",
+        "dataInicio",
+        "dataFim",
+        "categoria",
+        "observacoes",
+        "casoReferencia" // Permitindo editar o campo de referência
+      ];
+      const updateFields: any = {};
+  
+      // Somente os campos permitidos serão atualizados
+      allowedFields.forEach((field) => {
+        if (req.body[field] !== undefined) {
+          updateFields[field] = req.body[field];
         }
-    
-        res.status(200).json({ msg: "Caso atualizado com sucesso.", caso: casoAtualizado });
-      } catch (err) {
-        next(err);
+      });
+  
+      const casoAtualizado = await Case.findByIdAndUpdate(caseId, updateFields, { new: true });
+  
+      if (!casoAtualizado) {
+        res.status(404).json({ msg: "Caso não encontrado." });
+        return;
       }
-    },
+  
+      res.status(200).json({ msg: "Caso atualizado com sucesso.", caso: casoAtualizado });
+    } catch (err) {
+      next(err);
+    }
+  },
 
-      //Deletar Caso
-    async deleteCase(req: Request, res: Response, next: NextFunction): Promise<void> {
-      try {
-        const { caseId } = req.params;
+  // Deletar Caso
+  async deleteCase(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { caseId } = req.params;
 
-        const casoDeletado = await Case.findByIdAndDelete(caseId);
+      const casoDeletado = await Case.findByIdAndDelete(caseId);
 
-        if (!casoDeletado) {
-          res.status(404).json({ msg: "Caso não encontrado." });
-          return;
-        }
-
-        res.status(200).json({ msg: `Caso "${casoDeletado.titulo}" deletado com sucesso.` });
-      } catch (err) {
-        next(err);
+      if (!casoDeletado) {
+        res.status(404).json({ msg: "Caso não encontrado." });
+        return;
       }
-    },
 
-  //Listar todos os casos e filtros  
+      res.status(200).json({ msg: `Caso "${casoDeletado.titulo}" deletado com sucesso.` });
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  // Listar todos os casos e filtros  
   async listCases(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const {
@@ -126,6 +127,7 @@ export const CaseController = {
         dataFim,
         status,
         responsavel,
+        casoReferencia,
         page = "1",
         limit = "10"
       } = req.query;
@@ -151,6 +153,10 @@ export const CaseController = {
           { titulo: { $regex: search as string, $options: "i" } },
           { descricao: { $regex: search as string, $options: "i" } }
         ];
+      }
+
+      if (casoReferencia) {
+        filtros.casoReferencia = casoReferencia;
       }
   
       if (dataInicio || dataFim) {
@@ -208,5 +214,5 @@ export const CaseController = {
     } catch (err) {
       next(err);
     }
-  } 
+  }
 };

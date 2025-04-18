@@ -637,10 +637,10 @@ components:
     EvidenceRequest:
       type: object
       properties:
-        casoId:
+        casoReferencia:
           type: string
-          description: ID do Caso Relacionado
-          example: "67fb107daf5f09812475534f"
+          description: Código de Referência do Caso Relacionado
+          example: "CR-2025-001"
         tipoEvidencia:
           type: string
           enum: [imagem, texto]
@@ -666,9 +666,9 @@ components:
         conteudo:
           type: string
           example: "Relatório textual sobre a arcada dentária"
-        coletadoPor:
+        coletadoPorNome:
           type: string
-          example: "Dra. Helena Costa"
+          example: "Roberta Silva"
         file:
           type: string
           format: binary
