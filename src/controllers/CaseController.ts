@@ -5,74 +5,70 @@ import mongoose from "mongoose";
 import { User } from "../models/UserModel";
 
 export const CaseController = {
-  // Criar novo caso
-  async createCase(req: CustomRequest, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const user = req.user;
-  
-      if (!user) {
-        res.status(401).json({ msg: "Usuário não autenticado." });
-        return;
-      }
-  
-      if (user.perfil !== "Admin" && user.perfil !== "Perito") {
-        res.status(403).json({ msg: "Apenas usuários com perfil 'Admin' ou 'Perito' podem cadastrar casos." });
-        return;
-      }
-  
-      const { titulo, descricao, responsavel, dataCriacao, casoReferencia } = req.body;
-  
-      if (!titulo || !descricao || !responsavel || !dataCriacao || !casoReferencia) {
-        res.status(400).json({ msg: "Todos os campos são obrigatórios: título, descrição, responsável, data de criação e código de referência." });
-        return;
-      }
-  
-      if (!mongoose.Types.ObjectId.isValid(responsavel)) {
-        res.status(400).json({ msg: "ID do responsável inválido." });
-        return;
-      }
-  
-      // Busca o nome do responsável
-      const responsavelUser = await User.findById(responsavel).select("nome");
-  
-      if (!responsavelUser) {
-        res.status(404).json({ msg: "Responsável não encontrado." });
-        return;
-      }
-  
-      const parsedDate = new Date(dataCriacao);
-      if (isNaN(parsedDate.getTime())) {
-        res.status(400).json({ msg: "Data de criação inválida." });
-        return;
-      }
-  
-      const newCase = new Case({
-        titulo,
-        descricao,
-        responsavel, // ID
-        responsavelNome: responsavelUser.nome, // Nome
-        dataCriacao: parsedDate,
-        casoReferencia,
-        status: "Em andamento",
-      });
-  
-      await newCase.save();
-      res.status(201).json({ msg: "Caso cadastrado com sucesso!", caso: newCase });
-  
-    } catch (err) {
-      next(err);
-    }
-  },  
+// Criar novo caso
+async createCase(req: CustomRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const user = req.user;
 
-  // Listar apenas os títulos dos casos (para dropdown)
-  async getCaseTitle(req: Request, res: Response, next: NextFunction) {
-    try {
-      const titulos = await Case.find({}, "titulo casoReferencia"); // Busca 'titulo' e 'casoReferencia'
-      res.status(200).json(titulos);
-    } catch (err) {
-      next(err);
+    if (!user) {
+      res.status(401).json({ msg: "Usuário não autenticado." });
+      return;
     }
-  },
+
+    if (user.perfil !== "Admin" && user.perfil !== "Perito") {
+      res.status(403).json({ msg: "Apenas usuários com perfil 'Admin' ou 'Perito' podem cadastrar casos." });
+      return;
+    }
+
+    const { titulo, descricao, responsavel, dataCriacao, casoReferencia } = req.body;
+
+    if (!titulo || !descricao || !responsavel || !dataCriacao || !casoReferencia) {
+      res.status(400).json({ msg: "Todos os campos são obrigatórios: título, descrição, responsável, data de criação e código de referência." });
+      return;
+    }
+
+    // Busca o usuário pelo nome do responsável
+    const responsavelUser = await User.findOne({ nome: responsavel }).select("nome _id");
+
+    if (!responsavelUser) {
+      res.status(404).json({ msg: "Responsável não encontrado." });
+      return;
+    }
+
+    const parsedDate = new Date(dataCriacao);
+    if (isNaN(parsedDate.getTime())) {
+      res.status(400).json({ msg: "Data de criação inválida." });
+      return;
+    }
+
+    const newCase = new Case({
+      titulo,
+      descricao,
+      responsavel: responsavelUser._id, // ID do responsável
+      responsavelNome: responsavelUser.nome, // Nome do responsável
+      dataCriacao: parsedDate,
+      casoReferencia,
+      status: "Em andamento",
+    });
+
+    await newCase.save();
+    res.status(201).json({ msg: "Caso cadastrado com sucesso!", caso: newCase });
+
+  } catch (err) {
+    next(err);
+  }
+},  
+
+// Listar apenas os títulos dos casos (para dropdown)
+async getCaseTitle(req: Request, res: Response, next: NextFunction) {
+  try {
+    const titulos = await Case.find({}, "titulo casoReferencia"); // Busca 'titulo' e 'casoReferencia'
+    res.status(200).json(titulos);
+  } catch (err) {
+    next(err);
+  }
+},
+
 
   // Editar Caso
   async updateCase(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -86,7 +82,7 @@ export const CaseController = {
         "dataFim",
         "categoria",
         "observacoes",
-        "casoReferencia" // Permitindo editar o campo de referência
+        "casoReferencia" 
       ];
       const updateFields: any = {};
   
