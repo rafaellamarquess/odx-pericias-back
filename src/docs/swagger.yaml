@@ -679,7 +679,7 @@ components:
         conteudo:
           type: string
           example: "Relatório textual sobre a arcada dentária"
-        coletadoPorNome:
+        coletadoPor:
           type: string
           example: "Roberta Silva"
         file:

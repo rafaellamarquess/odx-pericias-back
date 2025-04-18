@@ -16,9 +16,9 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
       sexo,
       estadoCorpo,
       lesoes,
-      coletadoPorNome,
+      coletadoPor,
       conteudo,
-      codigoReferencia
+      casoReferencia
     } = req.body;
 
     // Valida tipo
@@ -29,13 +29,13 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
     }
 
     // Valida campos obrigatórios
-    if (!categoria || !vitima || !sexo || !estadoCorpo || !coletadoPorNome || !codigoReferencia) {
+    if (!categoria || !vitima || !sexo || !estadoCorpo || !coletadoPor || !casoReferencia) {
       res.status(400).json({ msg: "Todos os campos obrigatórios devem ser preenchidos: categoria, vitima, sexo, estadoCorpo, coletadoPorNome, codigoReferencia." });
       return;
     }
 
     // Verifica se caso existe pela referência
-    const foundCase = await Case.findOne({ codigoReferencia });
+    const foundCase = await Case.findOne({ casoReferencia });
     if (!foundCase) {
       res.status(404).json({ msg: "Caso não encontrado com esse código de referência." });
       return;
@@ -62,7 +62,7 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
         sexo,
         estadoCorpo,
         lesoes,
-        coletadoPorNome,
+        coletadoPor,
         imagemURL: result.secure_url,
         caso: foundCase._id
       });
@@ -81,7 +81,7 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
         sexo,
         estadoCorpo,
         lesoes,
-        coletadoPorNome,
+        coletadoPor,
         conteudo,
         caso: foundCase._id
       });

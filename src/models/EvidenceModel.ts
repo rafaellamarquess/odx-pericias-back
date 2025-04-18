@@ -9,7 +9,7 @@ interface IEvidence extends Document {
   sexo: "masculino" | "feminino" | "indeterminado";
   estadoCorpo: "inteiro" | "fragmentado" | "carbonizado" | "putrefacto" | "esqueleto";
   lesoes?: string;
-  coletadoPorNome: string; // Agora é uma string com o nome do coletor
+  coletadoPor: string; // Agora é uma string com o nome do coletor
   conteudo?: string;
   imagemURL?: string;
   laudo?: string;
@@ -28,7 +28,7 @@ const EvidenceSchema = new Schema<IEvidence>({
     required: true
   },
   lesoes: { type: String },
-  coletadoPorNome: { type: String, required: true }, // Alterado para string
+  coletadoPor: { type: String, required: true }, // Alterado para string
   conteudo: { type: String },
   imagemURL: { type: String },
   laudo: { type: String }
