@@ -7,7 +7,6 @@ import { User } from "../models/UserModel";
 export const CaseController = {
 
   // Criar novo caso
-// No método createCase:
 async createCase(req: CustomRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const user = req.user;
@@ -38,7 +37,14 @@ async createCase(req: CustomRequest, res: Response, next: NextFunction): Promise
 
     const parsedDate = new Date(dataCriacao);
     if (isNaN(parsedDate.getTime())) {
-      res.status(400).json({ msg: "Data de criação inválida." });
+      res.status(400).json({ msg: "Data de criação inválida. Formato esperado: ISO 8601 (ex: 2025-04-19T12:00:00Z)." });
+      return;
+    }
+
+    // Verifica se já existe um caso com o mesmo código de referência
+    const existingCase = await Case.findOne({ casoReferencia: casoReferencia.trim() });
+    if (existingCase) {
+      res.status(409).json({ msg: "Já existe um caso com esse código de referência." });
       return;
     }
 
@@ -46,11 +52,10 @@ async createCase(req: CustomRequest, res: Response, next: NextFunction): Promise
       titulo,
       descricao,
       responsavel: responsavelUser._id,
-      responsavelNome: responsavelUser.nome,
-      dataCriacao: parsedDate,
-      casoReferencia,
       cidade,
       estado,
+      dataCriacao: parsedDate,
+      casoReferencia: casoReferencia.trim(), // remove espaços acidentais
       status: "Em andamento",
     });
 
@@ -58,10 +63,10 @@ async createCase(req: CustomRequest, res: Response, next: NextFunction): Promise
     res.status(201).json({ msg: "Caso cadastrado com sucesso!", caso: newCase });
 
   } catch (err) {
+    console.error("Erro ao criar caso:", err);
     next(err);
   }
 },
-
 
 // Listar apenas os títulos dos casos (para dropdown)
 async getCaseTitle(req: Request, res: Response, next: NextFunction) {
