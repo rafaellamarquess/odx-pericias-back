@@ -130,119 +130,121 @@ async updateCase(req: Request, res: Response, next: NextFunction): Promise<void>
     }
   },
 
-  // Listar todos os casos e filtros  
-  async listCases(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const {
-        search,
-        dataInicio,
-        dataFim,
-        status,
-        responsavel,
-        casoReferencia,
-        cidade,
-        estado,
-        page = "1",
-        limit = "10"
-      } = req.query;
-  
-      const pageNum = parseInt(page as string, 10);
-      const limitNum = parseInt(limit as string, 10);
-  
-      if (isNaN(pageNum) || pageNum < 1) {
-        res.status(400).json({ msg: "Número da página inválido" });
-        return;
-      }
-  
-      if (isNaN(limitNum) || limitNum < 1 || limitNum > 100) {
-        res.status(400).json({ msg: "Limite por página deve ser entre 1 e 100" });
-        return;
-      }
-  
-      const filtros: any = {};
-  
-      if (search) {
-        if ((search as string).length < 3) {
-          res.status(400).json({ msg: "O termo de busca deve ter pelo menos 3 caracteres" });
-          return;
-        }
-  
-        filtros.$or = [
-          { titulo: { $regex: search as string, $options: "i" } },
-          { descricao: { $regex: search as string, $options: "i" } }
-        ];
-      }
-  
-      if (casoReferencia) {
-        filtros.casoReferencia = casoReferencia;
-      }
-  
-      if (cidade) {
-        filtros.cidade = { $regex: cidade as string, $options: "i" };
-      }
-  
-      if (estado) {
-        filtros.estado = { $regex: estado as string, $options: "i" };
-      }
-  
-      if (dataInicio || dataFim) {
-        filtros.dataCriacao = {};
-        if (dataInicio) {
-          const inicio = new Date(dataInicio as string);
-          if (isNaN(inicio.getTime())) {
-            res.status(400).json({ msg: "Data de início inválida" });
-            return;
-          }
-          filtros.dataCriacao.$gte = inicio;
-        }
-        if (dataFim) {
-          const fim = new Date(dataFim as string);
-          if (isNaN(fim.getTime())) {
-            res.status(400).json({ msg: "Data de fim inválida" });
-            return;
-          }
-          filtros.dataCriacao.$lte = fim;
-        }
-      }
-  
-      if (status) {
-        const statusValidos = ["Em andamento", "Finalizado", "Arquivado"];
-        if (!statusValidos.includes(status as string)) {
-          res.status(400).json({ msg: "Status inválido", opcoes: statusValidos });
-          return;
-        }
-        filtros.status = status;
-      }
-  
-      if (responsavel) {
-        if (!mongoose.Types.ObjectId.isValid(responsavel as string)) {
-          res.status(400).json({ msg: "ID do responsável inválido" });
-          return;
-        }
-        filtros.responsavel = new mongoose.Types.ObjectId(responsavel as string);
-      }
-  
-      const [casos, total] = await Promise.all([
-        Case.find(filtros)
-          .populate("responsavel", "nome email")
-          .sort({ dataCriacao: -1 })
-          .skip((pageNum - 1) * limitNum)
-          .limit(limitNum),
-        Case.countDocuments(filtros)
-      ]);
-  
-      res.status(200).json({
-        msg: "Casos listados com sucesso",
-        casos,
-        paginacao: {
-          total,
-          paginaAtual: pageNum,
-          porPagina: limitNum,
-          totalPaginas: Math.ceil(total / limitNum)
-        }
-      });
-    } catch (err) {
-      next(err);
+ // Listar todos os casos ou com filtros
+async listCases(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const {
+      search,
+      dataInicio,
+      dataFim,
+      status,
+      responsavel,
+      casoReferencia,
+      cidade,
+      estado,
+      page = "1",
+      limit = "10"
+    } = req.query;
+
+    const pageNum = parseInt(page as string, 10);
+    const limitNum = parseInt(limit as string, 10);
+
+    if (isNaN(pageNum) || pageNum < 1) {
+      res.status(400).json({ msg: "Número da página inválido" });
+      return;
     }
+
+    if (isNaN(limitNum) || limitNum < 1 || limitNum > 100) {
+      res.status(400).json({ msg: "Limite por página deve ser entre 1 e 100" });
+      return;
+    }
+
+    const filtros: any = {};
+
+    // Aplicar filtros apenas se existirem
+    if (search) {
+      if ((search as string).length < 3) {
+        res.status(400).json({ msg: "O termo de busca deve ter pelo menos 3 caracteres" });
+        return;
+      }
+
+      filtros.$or = [
+        { titulo: { $regex: search as string, $options: "i" } },
+        { descricao: { $regex: search as string, $options: "i" } }
+      ];
+    }
+
+    if (casoReferencia) {
+      filtros.casoReferencia = casoReferencia;
+    }
+
+    if (cidade) {
+      filtros.cidade = { $regex: cidade as string, $options: "i" };
+    }
+
+    if (estado) {
+      filtros.estado = { $regex: estado as string, $options: "i" };
+    }
+
+    if (dataInicio || dataFim) {
+      filtros.dataCriacao = {};
+      if (dataInicio) {
+        const inicio = new Date(dataInicio as string);
+        if (isNaN(inicio.getTime())) {
+          res.status(400).json({ msg: "Data de início inválida" });
+          return;
+        }
+        filtros.dataCriacao.$gte = inicio;
+      }
+      if (dataFim) {
+        const fim = new Date(dataFim as string);
+        if (isNaN(fim.getTime())) {
+          res.status(400).json({ msg: "Data de fim inválida" });
+          return;
+        }
+        filtros.dataCriacao.$lte = fim;
+      }
+    }
+
+    if (status) {
+      const statusValidos = ["Em andamento", "Finalizado", "Arquivado"];
+      if (!statusValidos.includes(status as string)) {
+        res.status(400).json({ msg: "Status inválido", opcoes: statusValidos });
+        return;
+      }
+      filtros.status = status;
+    }
+
+    if (responsavel) {
+      if (!mongoose.Types.ObjectId.isValid(responsavel as string)) {
+        res.status(400).json({ msg: "ID do responsável inválido" });
+        return;
+      }
+      filtros.responsavel = new mongoose.Types.ObjectId(responsavel as string);
+    }
+
+    // Caso não haja filtros, retorna todos os casos
+    const [casos, total] = await Promise.all([
+      Case.find(filtros) 
+        .populate("responsavel", "nome email")
+        .sort({ dataCriacao: -1 })
+        .skip((pageNum - 1) * limitNum)
+        .limit(limitNum),
+      Case.countDocuments(filtros) 
+    ]);
+
+    res.status(200).json({
+      msg: "Casos listados com sucesso",
+      casos,
+      paginacao: {
+        total,
+        paginaAtual: pageNum,
+        porPagina: limitNum,
+        totalPaginas: Math.ceil(total / limitNum)
+      }
+    });
+  } catch (err) {
+    next(err);
   }
+}
 };  
