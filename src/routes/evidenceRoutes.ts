@@ -3,13 +3,14 @@ import { EvidenceController } from "../controllers/EvidenceController";
 import { checkPermissions } from "../middlewares/permissionsMiddleware";
 import upload from "../middlewares/uploadMiddleware";
 import { Perfil } from "../models/UserModel";
+import { authenticateToken } from "../middlewares/authMiddleware";
 
 const router = express.Router();
 
-router.post("/", checkPermissions([Perfil.ADMIN, Perfil.PERITO]),  upload.single("file"), EvidenceController.createEvidence);
-router.put("/update/:evidenceId", checkPermissions([Perfil.ADMIN, Perfil.PERITO]), EvidenceController.updateEvidence);
-router.delete("/delete/:evidenceId", checkPermissions([Perfil.ADMIN, Perfil.PERITO]), EvidenceController.deleteEvidence);
-router.get("/list", checkPermissions([Perfil.ADMIN, Perfil.PERITO]), EvidenceController.listEvidences);
+router.post("/", authenticateToken, checkPermissions([Perfil.ADMIN, Perfil.PERITO]),  upload.single("file"), EvidenceController.createEvidence);
+router.put("/update/:evidenceId", authenticateToken, checkPermissions([Perfil.ADMIN, Perfil.PERITO]), EvidenceController.updateEvidence);
+router.delete("/delete/:evidenceId", authenticateToken, checkPermissions([Perfil.ADMIN, Perfil.PERITO]), EvidenceController.deleteEvidence);
+router.get("/list", authenticateToken, checkPermissions([Perfil.ADMIN, Perfil.PERITO]), EvidenceController.listEvidences);
 
 
 // Rota para adicionar evidências a partir do caso title
