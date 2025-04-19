@@ -131,7 +131,7 @@ async updateCase(req: Request, res: Response, next: NextFunction): Promise<void>
   },
 
  // Listar todos os casos ou com filtros
-async listCases(req: Request, res: Response, next: NextFunction): Promise<void> {
+ async listCases(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const {
       search,
@@ -161,7 +161,6 @@ async listCases(req: Request, res: Response, next: NextFunction): Promise<void> 
 
     const filtros: any = {};
 
-    // Aplicar filtros apenas se existirem
     if (search) {
       if ((search as string).length < 3) {
         res.status(400).json({ msg: "O termo de busca deve ter pelo menos 3 caracteres" });
@@ -223,19 +222,27 @@ async listCases(req: Request, res: Response, next: NextFunction): Promise<void> 
       filtros.responsavel = new mongoose.Types.ObjectId(responsavel as string);
     }
 
-    // Caso não haja filtros, retorna todos os casos
     const [casos, total] = await Promise.all([
-      Case.find(filtros) 
-        .populate("responsavel", "nome email")
+      Case.find(filtros)
+        .populate<{ responsavel: { nome: string } }>("responsavel", "nome")
         .sort({ dataCriacao: -1 })
         .skip((pageNum - 1) * limitNum)
         .limit(limitNum),
-      Case.countDocuments(filtros) 
+      Case.countDocuments(filtros)
     ]);
+
+    // Formatar para retornar apenas o nome no campo "responsavel"
+    const casosFormatados = casos.map(caso => {
+      const obj = caso.toObject();
+      return {
+        ...obj,
+        responsavel: typeof obj.responsavel === "object" ? obj.responsavel.nome : null
+      };
+    });
 
     res.status(200).json({
       msg: "Casos listados com sucesso",
-      casos,
+      casos: casosFormatados,
       paginacao: {
         total,
         paginaAtual: pageNum,
