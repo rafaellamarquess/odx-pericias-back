@@ -552,6 +552,12 @@ components:
           type: string
           format: date
           example: "2025-04-12"
+        cidade:
+          type: string
+          example: "Recife"
+        estado:
+          type: string
+          example: "Pernambuco"
         casoReferencia:
           type: string
           example: "CR-2025-001"
@@ -576,6 +582,12 @@ components:
           type: string
           format: date
           example: "2025-04-12"
+        cidade:
+          type: string
+          example: "Recife"
+        estado:
+          type: string
+          example: "Pernambuco"
         casoReferencia:
           type: string
           example: "CR-2025-001"
@@ -593,12 +605,12 @@ components:
           type: string
           enum: [Em andamento, Finalizado, Arquivado]
           example: "Finalizado"
-        responsavel:
+        cidade:
           type: string
-          example: "Dra. Ana Paula"
-        casoReferencia:
+          example: "Recife"
+        estado:
           type: string
-          example: "CR-2025-001"
+          example: "Pernambuco"
 
     Evidence:
       type: object
@@ -750,7 +762,7 @@ components:
         senha:
           type: string
           example: "senha"
-        tipoUsuario:
+        perfil:
           type: string
           enum: [Admin, Perito, Assistente]
           example: "Admin"

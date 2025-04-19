@@ -7,6 +7,7 @@ import { User } from "../models/UserModel";
 export const CaseController = {
 
   // Criar novo caso
+// No método createCase:
 async createCase(req: CustomRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const user = req.user;
@@ -21,14 +22,13 @@ async createCase(req: CustomRequest, res: Response, next: NextFunction): Promise
       return;
     }
 
-    const { titulo, descricao, responsavel, dataCriacao, casoReferencia } = req.body;
+    const { titulo, descricao, responsavel, dataCriacao, casoReferencia, cidade, estado } = req.body;
 
-    if (!titulo || !descricao || !responsavel || !dataCriacao || !casoReferencia) {
-      res.status(400).json({ msg: "Todos os campos são obrigatórios: título, descrição, responsável, data de criação e código de referência." });
+    if (!titulo || !descricao || !responsavel || !dataCriacao || !casoReferencia || !cidade || !estado) {
+      res.status(400).json({ msg: "Todos os campos são obrigatórios: título, descrição, responsável, data de criação, código de referência, cidade e estado." });
       return;
     }
 
-    // Busca o usuário pelo nome do responsável
     const responsavelUser = await User.findOne({ nome: responsavel }).select("nome _id");
 
     if (!responsavelUser) {
@@ -45,10 +45,12 @@ async createCase(req: CustomRequest, res: Response, next: NextFunction): Promise
     const newCase = new Case({
       titulo,
       descricao,
-      responsavel: responsavelUser._id, // ID do responsável
-      responsavelNome: responsavelUser.nome, // Nome do responsável
+      responsavel: responsavelUser._id,
+      responsavelNome: responsavelUser.nome,
       dataCriacao: parsedDate,
       casoReferencia,
+      cidade,
+      estado,
       status: "Em andamento",
     });
 
@@ -58,7 +60,8 @@ async createCase(req: CustomRequest, res: Response, next: NextFunction): Promise
   } catch (err) {
     next(err);
   }
-},  
+},
+
 
 // Listar apenas os títulos dos casos (para dropdown)
 async getCaseTitle(req: Request, res: Response, next: NextFunction) {
@@ -72,40 +75,37 @@ async getCaseTitle(req: Request, res: Response, next: NextFunction) {
 
 
   // Editar Caso
-  async updateCase(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const { caseId } = req.params;
-      const allowedFields = [
-        "titulo",
-        "descricao",
-        "status",
-        "dataInicio",
-        "dataFim",
-        "categoria",
-        "observacoes",
-        "casoReferencia" 
-      ];
-      const updateFields: any = {};
-  
-      // Somente os campos permitidos serão atualizados
-      allowedFields.forEach((field) => {
-        if (req.body[field] !== undefined) {
-          updateFields[field] = req.body[field];
-        }
-      });
-  
-      const casoAtualizado = await Case.findByIdAndUpdate(caseId, updateFields, { new: true });
-  
-      if (!casoAtualizado) {
-        res.status(404).json({ msg: "Caso não encontrado." });
-        return;
+async updateCase(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { caseId } = req.params;
+    const allowedFields = [
+      "titulo",
+      "descricao",
+      "status",
+      "cidade",
+      "estado"
+    ];
+
+    const updateFields: any = {};
+
+    allowedFields.forEach((field) => {
+      if (req.body[field] !== undefined) {
+        updateFields[field] = req.body[field];
       }
-  
-      res.status(200).json({ msg: "Caso atualizado com sucesso.", caso: casoAtualizado });
-    } catch (err) {
-      next(err);
+    });
+
+    const casoAtualizado = await Case.findByIdAndUpdate(caseId, updateFields, { new: true });
+
+    if (!casoAtualizado) {
+      res.status(404).json({ msg: "Caso não encontrado." });
+      return;
     }
-  },
+
+    res.status(200).json({ msg: "Caso atualizado com sucesso.", caso: casoAtualizado });
+  } catch (err) {
+    next(err);
+  }
+},
 
   // Deletar Caso
   async deleteCase(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -135,6 +135,8 @@ async getCaseTitle(req: Request, res: Response, next: NextFunction) {
         status,
         responsavel,
         casoReferencia,
+        cidade,
+        estado,
         page = "1",
         limit = "10"
       } = req.query;
@@ -144,10 +146,12 @@ async getCaseTitle(req: Request, res: Response, next: NextFunction) {
   
       if (isNaN(pageNum) || pageNum < 1) {
         res.status(400).json({ msg: "Número da página inválido" });
+        return;
       }
   
       if (isNaN(limitNum) || limitNum < 1 || limitNum > 100) {
         res.status(400).json({ msg: "Limite por página deve ser entre 1 e 100" });
+        return;
       }
   
       const filtros: any = {};
@@ -155,15 +159,25 @@ async getCaseTitle(req: Request, res: Response, next: NextFunction) {
       if (search) {
         if ((search as string).length < 3) {
           res.status(400).json({ msg: "O termo de busca deve ter pelo menos 3 caracteres" });
+          return;
         }
+  
         filtros.$or = [
           { titulo: { $regex: search as string, $options: "i" } },
           { descricao: { $regex: search as string, $options: "i" } }
         ];
       }
-
+  
       if (casoReferencia) {
         filtros.casoReferencia = casoReferencia;
+      }
+  
+      if (cidade) {
+        filtros.cidade = { $regex: cidade as string, $options: "i" };
+      }
+  
+      if (estado) {
+        filtros.estado = { $regex: estado as string, $options: "i" };
       }
   
       if (dataInicio || dataFim) {
@@ -172,6 +186,7 @@ async getCaseTitle(req: Request, res: Response, next: NextFunction) {
           const inicio = new Date(dataInicio as string);
           if (isNaN(inicio.getTime())) {
             res.status(400).json({ msg: "Data de início inválida" });
+            return;
           }
           filtros.dataCriacao.$gte = inicio;
         }
@@ -179,6 +194,7 @@ async getCaseTitle(req: Request, res: Response, next: NextFunction) {
           const fim = new Date(dataFim as string);
           if (isNaN(fim.getTime())) {
             res.status(400).json({ msg: "Data de fim inválida" });
+            return;
           }
           filtros.dataCriacao.$lte = fim;
         }
@@ -188,6 +204,7 @@ async getCaseTitle(req: Request, res: Response, next: NextFunction) {
         const statusValidos = ["Em andamento", "Finalizado", "Arquivado"];
         if (!statusValidos.includes(status as string)) {
           res.status(400).json({ msg: "Status inválido", opcoes: statusValidos });
+          return;
         }
         filtros.status = status;
       }
@@ -195,6 +212,7 @@ async getCaseTitle(req: Request, res: Response, next: NextFunction) {
       if (responsavel) {
         if (!mongoose.Types.ObjectId.isValid(responsavel as string)) {
           res.status(400).json({ msg: "ID do responsável inválido" });
+          return;
         }
         filtros.responsavel = new mongoose.Types.ObjectId(responsavel as string);
       }
@@ -222,4 +240,4 @@ async getCaseTitle(req: Request, res: Response, next: NextFunction) {
       next(err);
     }
   }
-};
+};  

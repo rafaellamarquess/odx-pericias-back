@@ -6,8 +6,10 @@ interface ICase extends Document {
   descricao: string;
   status: "Em andamento" | "Finalizado" | "Arquivado";
   responsavel: string;
+  cidade: string;
+  estado: string;
   dataCriacao: Date;
-  casoReferencia: string; // Novo campo para o código de referência
+  casoReferencia: string;
   evidencias: Types.Array<IEvidence>;
 }
 
@@ -17,6 +19,8 @@ const CaseSchema = new Schema<ICase>({
   status: { type: String, enum: ["Em andamento", "Finalizado", "Arquivado"], required: true },
   responsavel: { type: String, ref: "User", required: true },
   dataCriacao: { type: Date, default: Date.now },
+  cidade: { type: String, required: true },
+  estado: { type: String, required: true },
   casoReferencia: { type: String, required: true, unique: true }, 
   evidencias: [{ type: Schema.Types.ObjectId, ref: "Evidence" }] 
 });
