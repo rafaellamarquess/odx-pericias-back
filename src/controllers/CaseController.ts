@@ -83,6 +83,10 @@ async getCaseTitle(req: Request, res: Response, next: NextFunction) {
 async updateCase(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { caseId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(caseId)) {
+      res.status(400).json({ msg: "ID do caso inválido." });
+      return;
+    }
     const allowedFields = [
       "titulo",
       "descricao",
