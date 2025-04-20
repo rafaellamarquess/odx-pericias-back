@@ -9,6 +9,24 @@ export const EvidenceController = {
 // Criar evidência
 async createEvidence(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
+    const camposObrigatorios = [
+      "categoria",
+      "tipoEvidencia",
+      "vitima",
+      "sexo",
+      "estadoCorpo",
+      "coletadoPor",
+      "casoReferencia"
+    ];
+
+    // Verifica se todos os campos obrigatórios estão presentes
+    for (const campo of camposObrigatorios) {
+      if (!req.body[campo]) {
+        res.status(400).json({ msg: `Campo obrigatório ausente: ${campo}` });
+        return;
+      }
+    }
+
     const {
       categoria,
       tipoEvidencia,
@@ -21,20 +39,12 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
       casoReferencia
     } = req.body;
 
-    // Valida tipo
     const tiposValidos = ["imagem", "texto"];
-    if (!tipoEvidencia || !tiposValidos.includes(tipoEvidencia)) {
-      res.status(400).json({ msg: "Tipo de evidência inválido ou ausente. Use 'imagem' ou 'texto'." });
+    if (!tiposValidos.includes(tipoEvidencia)) {
+      res.status(400).json({ msg: "Tipo de evidência inválido. Use 'imagem' ou 'texto'." });
       return;
     }
 
-    // Valida campos obrigatórios
-    if (!categoria || !vitima || !sexo || !estadoCorpo || !coletadoPor || !casoReferencia) {
-      res.status(400).json({ msg: "Todos os campos obrigatórios devem ser preenchidos: categoria, vitima, sexo, estadoCorpo, coletadoPor, casoReferencia." });
-      return;
-    }
-
-    // Verifica se o caso existe pela referência
     const foundCase = await Case.findOne({ casoReferencia });
     if (!foundCase) {
       res.status(404).json({ msg: "Caso não encontrado com esse código de referência." });
@@ -44,16 +54,10 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
     let evidence;
 
     if (tipoEvidencia === "imagem") {
-      if (!req.file?.path) {
+      if (!req.file || !req.file.path) {
         res.status(400).json({ msg: "Arquivo de imagem não enviado." });
         return;
       }
-
-      const result = await cloudinary.uploader.upload(req.file.path, {
-        folder: "evidencias",
-        use_filename: true,
-        unique_filename: false
-      });
 
       evidence = await Evidence.create({
         tipo: "imagem",
@@ -63,12 +67,10 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
         estadoCorpo,
         lesoes,
         coletadoPor,
-        imagemURL: result.secure_url,
+        imagemURL: req.file.path,
         casoReferencia
       });
-    }
-
-    if (tipoEvidencia === "texto") {
+    } else {
       if (!conteudo) {
         res.status(400).json({ msg: "Conteúdo textual obrigatório para evidência do tipo texto." });
         return;
@@ -87,16 +89,10 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
       });
     }
 
-    // Atualiza o caso para adicionar a evidência ao array
-    if (evidence) {
-      await Case.updateOne(
-        { casoReferencia },
-        { $push: { evidencias: evidence._id } }
-      );
-    } else {
-      res.status(500).json({ msg: "Erro ao criar evidência." });
-      return;
-    }
+    await Case.updateOne(
+      { casoReferencia },
+      { $push: { evidencias: evidence._id } }
+    );
 
     res.status(200).json({ msg: "Evidência adicionada com sucesso.", evidence });
   } catch (err) {

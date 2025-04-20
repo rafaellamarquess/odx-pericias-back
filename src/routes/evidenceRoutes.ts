@@ -7,6 +7,7 @@ import { authenticateToken } from "../middlewares/authMiddleware";
 
 const router = express.Router();
 
+
 router.post("/", authenticateToken, checkPermissions([Perfil.ADMIN, Perfil.PERITO]),  upload.single("file"), EvidenceController.createEvidence);
 router.get("/", authenticateToken, checkPermissions([Perfil.ADMIN, Perfil.PERITO]), EvidenceController.listEvidences);
 router.put("/:evidenceId", authenticateToken, checkPermissions([Perfil.ADMIN, Perfil.PERITO]), EvidenceController.updateEvidence);
