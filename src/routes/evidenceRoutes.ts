@@ -8,9 +8,9 @@ import { authenticateToken } from "../middlewares/authMiddleware";
 const router = express.Router();
 
 router.post("/", authenticateToken, checkPermissions([Perfil.ADMIN, Perfil.PERITO]),  upload.single("file"), EvidenceController.createEvidence);
-router.put("/update/:evidenceId", authenticateToken, checkPermissions([Perfil.ADMIN, Perfil.PERITO]), EvidenceController.updateEvidence);
-router.delete("/delete/:evidenceId", authenticateToken, checkPermissions([Perfil.ADMIN, Perfil.PERITO]), EvidenceController.deleteEvidence);
-router.get("/list", authenticateToken, checkPermissions([Perfil.ADMIN, Perfil.PERITO]), EvidenceController.listEvidences);
+router.get("/", authenticateToken, checkPermissions([Perfil.ADMIN, Perfil.PERITO]), EvidenceController.listEvidences);
+router.put("/:evidenceId", authenticateToken, checkPermissions([Perfil.ADMIN, Perfil.PERITO]), EvidenceController.updateEvidence);
+router.delete("/evidenceId", authenticateToken, checkPermissions([Perfil.ADMIN, Perfil.PERITO]), EvidenceController.deleteEvidence);
 
 
 // Rota para adicionar evidências a partir do caso title
