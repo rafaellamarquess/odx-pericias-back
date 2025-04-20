@@ -28,7 +28,7 @@ const CaseSchema = new Schema<ICase>({
   },
   cidade: { type: String, required: true },
   estado: { type: String, required: true },
-  casoReferencia: { type: String, required: true, unique: true }, 
+  casoReferencia: { type: String, required: true }, 
   evidencias: [{ type: Schema.Types.ObjectId, ref: "Evidence" }] 
 });
 
