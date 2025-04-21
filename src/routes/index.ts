@@ -13,5 +13,6 @@ router.use("/auth", authRoutes);
 router.use("/evidence", evidenceRoutes);
 router.use("/report", reportRoutes);
 router.use("/cases", caseRoutes); 
+router.use("/dashboard", reportRoutes);
 
 export default router;

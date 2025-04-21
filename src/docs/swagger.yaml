@@ -523,6 +523,89 @@ paths:
           description: Relatório não encontrado
         '500':
           description: Erro ao assinar o relatório
+  
+/api/dashboard/:
+  get:
+    summary: Retorna dados do dashboard
+    description: Retorna informações resumidas sobre os casos agrupados por vitima, sexo, estado, cidade, lesoes.
+    tags: [Dashboard]
+    security:
+      - BearerAuth: []
+    responses:
+      '200':
+        description: Dados do dashboard retornados com sucesso
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                totalCasos:
+                  type: integer
+                  example: 100
+                vitima:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      categoria:
+                        type: string
+                        example: "João da Silva"
+                      quantidade:
+                        type: integer
+                        example: 5
+                sexo:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      categoria:
+                        type: string
+                        example: "Feminino"
+                      quantidade:
+                        type: integer
+                        example: 10
+                estado:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      categoria:
+                        type: string
+                        example: "Pernambuco"
+                      quantidade:
+                        type: integer
+                        example: 8
+                cidade:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      categoria:
+                        type: string
+                        example: "Recife"
+                      quantidade:
+                        type: integer
+                        example: 4
+                lesoes:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      categoria:
+                        type: string
+                        example: "Fratura"
+                      quantidade:
+                        type: integer
+                        example: 6
+      '400':
+        description: Erro na solicitação
+      '401':
+        description: Usuário não autenticado
+      '403':
+        description: Permissão negada
+      '500':
+        description: Erro interno do servidor
+
 
 components:
   securitySchemes:
