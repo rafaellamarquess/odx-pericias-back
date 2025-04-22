@@ -21,21 +21,19 @@ export const ReportController = {
         consideracoesTecnicoPericiais,
         conclusaoTecnica,
         casoReferencia,
-        evidencias: evidenciasIds
       } = req.body;
   
-      // Verifica se o caso existe com base no código de referência
+      // Busca o caso pelo código de referência
       const caso = await Case.findOne({ codigoReferencia: casoReferencia });
       if (!caso) {
         res.status(404).json({ msg: 'Caso não encontrado com esse código de referência.' });
         return;
       }
   
-      // Verifica se as evidências passadas existem
-      const evidencias = await Evidence.find({ '_id': { $in: evidenciasIds } }).exec();
-  
-      if (evidencias.length !== evidenciasIds.length) {
-        res.status(404).json({ msg: 'Uma ou mais evidências não foram encontradas.' });
+      // Busca todas as evidências associadas a esse caso
+      const evidencias = await Evidence.find({ caseId: caso._id });
+      if (!evidencias || evidencias.length === 0) {
+        res.status(404).json({ msg: 'Nenhuma evidência encontrada para este caso.' });
         return;
       }
   
@@ -58,11 +56,7 @@ export const ReportController = {
   
       await report.save();
   
-      // Gerando o PDF com Puppeteer
-      const browser = await puppeteer.launch();
-      const page = await browser.newPage();
-  
-      // Gerar o HTML para o PDF com base nos dados do relatório e evidências
+      // Geração do conteúdo HTML para o PDF
       const evidenciasHtml = evidencias.map(e => `
         <div style="margin-bottom: 20px;">
           <h4>Evidência (${e.tipo}) - ${e.categoria}</h4>
@@ -87,17 +81,20 @@ export const ReportController = {
         ${evidenciasHtml}
       `;
   
+      // Geração do PDF
+      const browser = await puppeteer.launch();
+      const page = await browser.newPage();
       await page.setContent(htmlContent);
       const pdfBuffer = await page.pdf({ format: 'A4' });
+      await browser.close();
   
       res.status(200).json({ msg: 'Relatório criado com sucesso.', report, pdf: pdfBuffer });
   
-      await browser.close();
     } catch (error) {
+      console.error("Erro ao gerar relatório:", error);
       res.status(500).json({ msg: 'Erro ao gerar o relatório.', error });
     }
   },  
-
   
   async assinarDigitalmente(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
