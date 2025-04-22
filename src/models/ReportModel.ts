@@ -18,10 +18,8 @@ const ReportSchema = new mongoose.Schema({
     required: true
   },
   
-  evidencias: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Evidence"
-  }],
+  evidencias: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Evidence' }],
+  
   criadoEm: {
     type: Date,
     default: Date.now
