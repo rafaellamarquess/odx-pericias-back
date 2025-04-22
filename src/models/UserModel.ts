@@ -14,19 +14,28 @@ export interface IUser extends Document {
   perfil: "Admin" | "Perito" | "Assistente";
   rg: string;
   cro?: string;
+  resetPasswordToken?: string | null;
+  resetPasswordExpires?: Date | null;
 }
 
-const UserSchema = new Schema<IUser>({
-  nome: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
-  senha: { type: String, required: true },
-  perfil: { type: String, enum: ["Admin", "Perito", "Assistente"], required: true },
-  rg: { type: String, required: true },
-  cro: { 
-    type: String, 
-    required: function(this: IUser) { return this.perfil === "Perito"; },
-  }
-}, { timestamps: true });
+const UserSchema = new Schema<IUser>(
+  {
+    nome: { type: String, required: true },
+    email: { type: String, required: true, unique: true },
+    senha: { type: String, required: true },
+    perfil: { type: String, enum: ["Admin", "Perito", "Assistente"], required: true },
+    rg: { type: String, required: true },
+    cro: {
+      type: String,
+      required: function (this: IUser) {
+        return this.perfil === "Perito";
+      },
+    },
+    resetPasswordToken: { type: String, default: null },
+    resetPasswordExpires: { type: Date, default: null },
+  },
+  { timestamps: true }
+);
 
 // Hash da senha antes de salvar no banco
 UserSchema.pre<IUser>("save", async function (next) {
@@ -35,5 +44,5 @@ UserSchema.pre<IUser>("save", async function (next) {
   next();
 });
 
-export const User = mongoose.model<IUser>("User", UserSchema); 
+export const User = mongoose.model<IUser>("User", UserSchema);
 export default User;
