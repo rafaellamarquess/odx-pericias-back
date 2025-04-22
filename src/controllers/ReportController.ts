@@ -98,20 +98,56 @@ export const ReportController = {
     }
   },  
 
+  
   async assinarDigitalmente(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { reportId } = req.params;
-      const report = await Report.findById(reportId);
-
+      const report = await Report.findById(reportId).populate('caso evidencias');
+  
       if (!report) {
         res.status(404).json({ msg: "Relatório não encontrado." });
         return;
       }
-
+  
       report.assinadoDigitalmente = true;
       await report.save();
-
-      res.status(200).json({ msg: `Relatório "${report.titulo}" assinado digitalmente.` });
+  
+      // Regenerar o PDF com marca de assinatura
+      const browser = await puppeteer.launch();
+      const page = await browser.newPage();
+  
+      const evidenciasHtml = report.evidencias.map((e: any) => `
+        <div style="margin-bottom: 20px;">
+          <h4>Evidência (${e.tipo}) - ${e.categoria}</h4>
+          ${e.tipo === "imagem" ? `<img src="${e.imagemURL}" style="max-width: 300px;" />` : `<p>${e.conteudo}</p>`}
+          <p><strong>Coletado por:</strong> ${e.coletadoPor || "Desconhecido"}</p>
+        </div>
+      `).join("");
+  
+      const htmlContent = `
+        <h1>Relatório de Perícia</h1>
+        <h2>${report.titulo}</h2>
+        <p><strong>Caso:</strong> ${(report.caso as any).titulo}</p>
+        <p><strong>Descrição:</strong> ${report.descricao}</p>
+        <p><strong>Objeto da Perícia:</strong> ${report.objetoPericia}</p>
+        <p><strong>Análise Técnica:</strong> ${report.analiseTecnica}</p>
+        <p><strong>Método Utilizado:</strong> ${report.metodoUtilizado}</p>
+        <p><strong>Destinatário:</strong> ${report.destinatario}</p>
+        <p><strong>Materiais Utilizados:</strong> ${report.materiaisUtilizados}</p>
+        <p><strong>Exames Realizados:</strong> ${report.examesRealizados}</p>
+        <p><strong>Considerações Técnicas Periciais:</strong> ${report.consideracoesTecnicoPericiais}</p>
+        <p><strong>Conclusão Técnica:</strong> ${report.conclusaoTecnica}</p>
+        <h3>Evidências:</h3>
+        ${evidenciasHtml}
+        <p style="margin-top: 20px;"><strong>Assinado Digitalmente em:</strong> ${new Date().toLocaleString()}</p>
+      `;
+  
+      await page.setContent(htmlContent);
+      const pdfBuffer = await page.pdf({ format: 'A4' });
+  
+      res.status(200).json({ msg: `Relatório "${report.titulo}" assinado digitalmente.`, pdf: pdfBuffer });
+  
+      await browser.close();
     } catch (err) {
       next(err);
     }
