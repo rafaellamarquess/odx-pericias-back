@@ -151,24 +151,13 @@ async updateCase(req: Request, res: Response, next: NextFunction): Promise<void>
       cidade,
       estado,
       page = "1",
-      limit = "10"
+      limit = "10",
+      somenteArray // <-- Novo parâmetro
     } = req.query;
-
-    const pageNum = parseInt(page as string, 10);
-    const limitNum = parseInt(limit as string, 10);
-
-    if (isNaN(pageNum) || pageNum < 1) {
-      res.status(400).json({ msg: "Número da página inválido" });
-      return;
-    }
-
-    if (isNaN(limitNum) || limitNum < 1 || limitNum > 100) {
-      res.status(400).json({ msg: "Limite por página deve ser entre 1 e 100" });
-      return;
-    }
 
     const filtros: any = {};
 
+    // Filtros diversos
     if (search) {
       if ((search as string).length < 3) {
         res.status(400).json({ msg: "O termo de busca deve ter pelo menos 3 caracteres" });
@@ -230,6 +219,45 @@ async updateCase(req: Request, res: Response, next: NextFunction): Promise<void>
       filtros.responsavel = new mongoose.Types.ObjectId(responsavel as string);
     }
 
+    // Se for solicitado apenas array simples (sem paginação)
+    if (somenteArray === "true") {
+      const casos = await Case.find(filtros)
+        .populate<{ responsavel: { nome: string } }>("responsavel", "nome")
+        .sort({ dataCriacao: -1 });
+
+      const casosFormatados = casos.map(caso => {
+        const obj = caso.toObject();
+        return {
+          _id: obj._id,
+          titulo: obj.titulo,
+          descricao: obj.descricao,
+          status: obj.status,
+          cidade: obj.cidade,
+          estado: obj.estado,
+          dataCriacao: obj.dataCriacao,
+          casoReferencia: obj.casoReferencia,
+          responsavel: typeof obj.responsavel === "object" ? obj.responsavel.nome : null
+        };
+      });
+
+      res.status(200).json(casosFormatados);
+      return;
+    }
+
+    // Paginação padrão
+    const pageNum = parseInt(page as string, 10);
+    const limitNum = parseInt(limit as string, 10);
+
+    if (isNaN(pageNum) || pageNum < 1) {
+      res.status(400).json({ msg: "Número da página inválido" });
+      return;
+    }
+
+    if (isNaN(limitNum) || limitNum < 1 || limitNum > 100) {
+      res.status(400).json({ msg: "Limite por página deve ser entre 1 e 100" });
+      return;
+    }
+
     const [casos, total] = await Promise.all([
       Case.find(filtros)
         .populate<{ responsavel: { nome: string } }>("responsavel", "nome")
@@ -253,7 +281,6 @@ async updateCase(req: Request, res: Response, next: NextFunction): Promise<void>
         responsavel: typeof obj.responsavel === "object" ? obj.responsavel.nome : null
       };
     });
-    
 
     res.status(200).json({
       msg: "Casos listados com sucesso",

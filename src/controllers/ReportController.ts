@@ -23,15 +23,15 @@ export const ReportController = {
         casoReferencia,
       } = req.body;
   
-      // Busca o caso pelo código de referência
-      const caso = await Case.findOne({ codigoReferencia: casoReferencia });
+      // Busca o caso pelo _id
+      const caso = await Case.findById(casoReferencia);
       if (!caso) {
-        res.status(404).json({ msg: 'Caso não encontrado com esse código de referência.' });
+        res.status(404).json({ msg: 'Caso não encontrado.' });
         return;
       }
   
       // Busca todas as evidências associadas a esse caso
-      const evidencias = await Evidence.find({ caseId: caso._id });
+      const evidencias = await Evidence.find({ caso: caso._id });
       if (!evidencias || evidencias.length === 0) {
         res.status(404).json({ msg: 'Nenhuma evidência encontrada para este caso.' });
         return;
@@ -68,6 +68,7 @@ export const ReportController = {
       const htmlContent = `
         <h1>Relatório de Perícia</h1>
         <h2>${titulo}</h2>
+        <p><strong>Caso:</strong> ${caso.titulo}</p>
         <p><strong>Descrição:</strong> ${descricao}</p>
         <p><strong>Objeto da Perícia:</strong> ${objetoPericia}</p>
         <p><strong>Análise Técnica:</strong> ${analiseTecnica}</p>
@@ -94,7 +95,7 @@ export const ReportController = {
       console.error("Erro ao gerar relatório:", error);
       res.status(500).json({ msg: 'Erro ao gerar o relatório.', error });
     }
-  },  
+  },
   
   async assinarDigitalmente(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
