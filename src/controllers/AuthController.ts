@@ -69,7 +69,7 @@ export const getLoggedUser = async ( req: CustomRequest, res: Response, next: Ne
 };
 
 //Redefinir senha ou email
-export const forgotPassword: express.RequestHandler = async (req: CustomRequest, res: Response, next: NextFunction): Promise<void> => {
+export const updateCredencial: express.RequestHandler = async (req: CustomRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { newPassword, oldPassword, newEmail } = req.body;
     if (!newPassword && !newEmail) {
