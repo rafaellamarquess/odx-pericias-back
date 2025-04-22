@@ -1,5 +1,4 @@
 import { NextFunction, Response, Request } from "express";
-import cloudinary from "../config/cloudinary";
 import { Evidence } from "../models/EvidenceModel";
 import { Case } from "../models/CaseModel"; // Importando o modelo de "Case"
 import mongoose from "mongoose";
@@ -11,7 +10,7 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
   try {
     const camposObrigatorios = [
       "categoria",
-      "tipoEvidencia",
+      "tipo",
       "vitima",
       "sexo",
       "estadoCorpo",
@@ -29,7 +28,7 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
 
     const {
       categoria,
-      tipoEvidencia,
+      tipo,
       vitima,
       sexo,
       estadoCorpo,
@@ -40,7 +39,7 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
     } = req.body;
 
     const tiposValidos = ["imagem", "texto"];
-    if (!tiposValidos.includes(tipoEvidencia)) {
+    if (!tiposValidos.includes(tipo)) {
       res.status(400).json({ msg: "Tipo de evidência inválido. Use 'imagem' ou 'texto'." });
       return;
     }
@@ -53,7 +52,7 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
 
     let evidence;
 
-    if (tipoEvidencia === "imagem") {
+    if (tipo === "imagem") {
       if (!req.file || !req.file.path) {
         res.status(400).json({ msg: "Arquivo de imagem não enviado." });
         return;
