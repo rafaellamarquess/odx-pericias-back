@@ -196,30 +196,36 @@ paths:
         '403':
           description: Permissão negada
 
-  /api/cases/case-title:
+  /api/cases/{caseId}/evidences:
     get:
-      summary: Obter título de um caso
-      description: Retorna o título de um caso específico.
+      summary: Listar evidências de um caso específico
+      description: Retorna uma lista de todas as evidências associadas a um caso específico.
       tags: [Cases]
       security:
         - BearerAuth: []
+      parameters:
+        - in: path
+          name: caseId
+          required: true
+          schema:
+            type: string
       responses:
         '200':
-          description: Título do caso retornado com sucesso
+          description: Lista de evidências retornada com sucesso
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  titulo:
-                    type: string
-                    example: "Caso João da Silva"
+                type: array
+                items:
+                  $ref: '#/components/schemas/Evidence'
         '401':
           description: Usuário não autenticado
         '403':
           description: Permissão negada
         '404':
           description: Caso não encontrado
+        '500':
+          description: Erro interno do servidor
 
   /api/cases/{caseId}:
     put:

@@ -3,6 +3,8 @@ import { Case } from "../models/CaseModel";
 import { CustomRequest } from "../types/CustomRequest";
 import mongoose from "mongoose";
 import { User } from "../models/UserModel";
+import { Evidence } from "../models/EvidenceModel";
+
 
 export const CaseController = {
 
@@ -68,13 +70,15 @@ async createCase(req: CustomRequest, res: Response, next: NextFunction): Promise
   }
 },
 
-// Listar apenas os títulos dos casos (para dropdown)
-async getCaseTitle(req: Request, res: Response, next: NextFunction) {
+  // Listar evidências de um caso específico
+getEvidencesByCaseId: async (req: Request, res: Response) => {
   try {
-    const titulos = await Case.find({}, "titulo casoReferencia"); // Busca 'titulo' e 'casoReferencia'
-    res.status(200).json(titulos);
-  } catch (err) {
-    next(err);
+    const { id } = req.params;
+    const evidencias = await Evidence.find({ caseId: id });
+    res.status(200).json({ evidencias });
+  } catch (error) {
+    console.error("Erro ao buscar evidências do caso:", error);
+    res.status(500).json({ msg: "Erro ao buscar evidências do caso." });
   }
 },
 
