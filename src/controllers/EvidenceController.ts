@@ -105,7 +105,7 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
       const { evidenceId } = req.params;
       // Lista apenas dos campos que PODEM ser atualizados
       const allowedFields = [
-        "caso",
+        "casoReferencia",
         "tipo",
         "categoria",
         "vitima",

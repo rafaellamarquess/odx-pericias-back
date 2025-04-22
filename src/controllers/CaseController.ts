@@ -235,14 +235,21 @@ async updateCase(req: Request, res: Response, next: NextFunction): Promise<void>
       Case.countDocuments(filtros)
     ]);
 
-    // Formatar para retornar apenas o nome no campo "responsavel"
     const casosFormatados = casos.map(caso => {
       const obj = caso.toObject();
       return {
-        ...obj,
+        _id: obj._id,
+        titulo: obj.titulo,
+        descricao: obj.descricao,
+        status: obj.status,
+        cidade: obj.cidade,
+        estado: obj.estado,
+        dataCriacao: obj.dataCriacao,
+        casoReferencia: obj.casoReferencia,
         responsavel: typeof obj.responsavel === "object" ? obj.responsavel.nome : null
       };
     });
+    
 
     res.status(200).json({
       msg: "Casos listados com sucesso",
