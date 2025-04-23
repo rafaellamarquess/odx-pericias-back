@@ -36,22 +36,19 @@ export const createUser: express.RequestHandler = async (req: Request, res: Resp
   //Editar Usuário
   export const updateUser: express.RequestHandler = async (req: CustomRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
-      // Verificar se req.user está definido antes de acessar seu perfil
       if (!req.user) {
         res.status(401).json({ msg: "Usuário não autenticado." });
         return;
       }
   
-      // Verificar se o usuário é admin
       if (req.user.perfil !== "Admin") {
        res.status(403).json({ msg: "Apenas administradores podem editar outros usuários." });
        return;
       }
   
-      const { userId } = req.params;  // Recebe o ID do usuário a ser editado
-      const { nome, email, perfil, rg, cro } = req.body;  // Dados para atualização
+      const { userId } = req.params;  
+      const { nome, email, perfil, rg, cro } = req.body;
   
-      // Procurar o usuário no banco
       const usuario = await User.findById(userId);
       if (!usuario) {
         res.status(404).json({ msg: "Usuário não encontrado." });
@@ -72,17 +69,14 @@ export const createUser: express.RequestHandler = async (req: Request, res: Resp
     }
   };
   
-  
+  // Deletar Usuário
   export const deleteUser: express.RequestHandler = async (req: CustomRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
-      // Verificar se req.user está definido antes de acessar seu perfil
       if (!req.user) {
         res.status(401).json({ msg: "Usuário não autenticado." });
         return;
       }
-  
-      // Verificar se o usuário é admin
-      if (req.user.perfil !== "Admin") {
+        if (req.user.perfil !== "Admin") {
         res.status(403).json({ msg: "Apenas administradores podem deletar usuários." });
         return;
       }

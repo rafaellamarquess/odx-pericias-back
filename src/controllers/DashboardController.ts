@@ -6,7 +6,6 @@ export const DashboardController = {
   
   async filtrarCasos(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      // Pipeline base para incluir dados de Case
       const basePipeline = [
         {
           $lookup: {

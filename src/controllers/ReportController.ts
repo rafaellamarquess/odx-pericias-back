@@ -10,8 +10,7 @@ import axios from "axios";
 import moment from "moment";
 import User from "../models/UserModel";
 
-// Interface for req.user (from JWT middleware)
-// Interface for req.user (from JWT middleware)
+// Interface  pra req.user (JWT middleware)
 interface AuthenticatedRequest extends Request {
   user?: {
     id: string;
@@ -20,14 +19,27 @@ interface AuthenticatedRequest extends Request {
   };
 }
 
-// Utility function to generate PDF content
+// Para gerar o conteudo do relatorio
 async function generatePdfContent(report: IReport, caso: ICase, evidencias: IEvidence[], signedBy?: string): Promise<string> {
+  // Buscar o nome do responsável no modelo User
+  let responsavelNome = "N/A"; // Valor padrão caso o responsável não seja encontrado
+  if (caso.responsavel) {
+    try {
+      const user = await User.findById(caso.responsavel).select('nome').exec();
+      if (user && user.nome) {
+        responsavelNome = user.nome;
+      }
+    } catch (err) {
+      console.error(`Erro ao buscar nome do responsável ${caso.responsavel}:`, err);
+    }
+  }
+
   const caseDetails = `
     <h2>Detalhes do Caso</h2>
     <p><strong>Título:</strong> ${caso.titulo}</p>
     <p><strong>Descrição:</strong> ${caso.descricao}</p>
     <p><strong>Status:</strong> ${caso.status}</p>
-    <p><strong>Responsável:</strong> ${caso.responsavel}</p>
+    <p><strong>Responsável:</strong> ${responsavelNome}</p>
     <p><strong>Cidade:</strong> ${caso.cidade}</p>
     <p><strong>Estado:</strong> ${caso.estado}</p>
     <p><strong>Data de Criação:</strong> ${moment(caso.dataCriacao).format('DD/MM/YYYY')}</p>
@@ -126,7 +138,7 @@ async function generatePdfContent(report: IReport, caso: ICase, evidencias: IEvi
   `;
 }
 
-// Utility function to generate PDF
+// Para gerar o relatório em PDF
 async function generatePdf(htmlContent: string): Promise<Buffer> {
   const browser = await puppeteer.launch({
     args: chromium.args,
@@ -220,11 +232,11 @@ export const ReportController = {
     }
   },
 
+  // Função para assinar digitalmente o relatório
   async assinarDigitalmente(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const { reportId } = req.params;
 
-      // Fetch report with populated case and evidences
       const report = await Report.findById(reportId)
         .populate<{ caso: ICase }>('caso')
         .populate<{ evidencias: IEvidence[] }>('evidencias');
@@ -239,7 +251,6 @@ export const ReportController = {
         return;
       }
 
-      // Get the authenticated user's name
       let signedBy = "Usuário Desconhecido";
       if (req.user?.id) {
         const user = await User.findById(req.user.id).select('nome');
@@ -248,10 +259,8 @@ export const ReportController = {
         }
       }
 
-      // Convert Mongoose array to plain array
       const plainEvidencias: IEvidence[] = report.evidencias.map((e: IEvidence) => e.toObject());
 
-      // Generate PDF with signature
       const htmlContent = await generatePdfContent(
         report.toObject() as unknown as IReport, 
         report.caso, 
@@ -260,11 +269,9 @@ export const ReportController = {
       );
       const pdfBuffer = await generatePdf(htmlContent);
 
-      // Debug: salvar PDF assinado
       fs.writeFileSync('debug_signed.pdf', pdfBuffer);
       console.log('PDF assinado salvo para debug em debug_signed.pdf');
 
-      // Update report
       report.assinadoDigitalmente = true;
       await report.save();
 
@@ -278,7 +285,12 @@ export const ReportController = {
       res.status(500).json({ msg: 'Erro ao assinar o relatório.', error: errorMessage });
     }
   },
+
+
+
+  // GESTÃO DE RELATÓRIO
   
+  // Função para atualizar um relatório (PRECISA GERAR OUTRO RELATÓRIO EM PDF APÓS MODIFICAÇÕES)
   async updateReport(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { reportId } = req.params;
@@ -293,9 +305,9 @@ export const ReportController = {
         "examesRealizados",
         "consideracoesTecnicoPericiais",
         "conclusaoTecnica",
-        "caso",  // Caso relacionado ao relatório
-        "evidencias",  // Evidências associadas ao relatório
-        "assinadoDigitalmente"  // Status da assinatura digital
+        "caso",  
+        "evidencias", 
+        "assinadoDigitalmente"  
       ];
   
       const updateFields: any = {};

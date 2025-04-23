@@ -8,7 +8,6 @@ import dashboardRoutes from "./dashboardRoutes";
 
 const router = Router();
 
-// Agrupamento das rotas
 router.use("/user", userRoutes);
 router.use("/auth", authRoutes);
 router.use("/evidence", evidenceRoutes);

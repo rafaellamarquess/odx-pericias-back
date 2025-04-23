@@ -14,8 +14,4 @@ router.put("/:evidenceId", authenticateToken, checkPermissions([Perfil.ADMIN, Pe
 router.delete("/:evidenceId", authenticateToken, checkPermissions([Perfil.ADMIN, Perfil.PERITO]), EvidenceController.deleteEvidence);
 
 
-// Rota para adicionar evidências a partir do caso title
-// router.post("/:caseTitle/:tipo", upload.single("file"), checkPermissions([Perfil.ADMIN, Perfil.PERITO]), EvidenceController.createEvidence);
-
-
 export default router;

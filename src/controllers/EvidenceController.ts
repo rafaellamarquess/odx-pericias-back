@@ -1,6 +1,6 @@
 import { NextFunction, Response, Request } from "express";
 import { Evidence } from "../models/EvidenceModel";
-import { Case } from "../models/CaseModel"; // Importando o modelo de "Case"
+import { Case } from "../models/CaseModel";
 import mongoose from "mongoose";
 
 export const EvidenceController = {
@@ -18,7 +18,6 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
       "casoReferencia"
     ];
 
-    // Verifica se todos os campos obrigatórios estão presentes
     for (const campo of camposObrigatorios) {
       if (!req.body[campo]) {
         res.status(400).json({ msg: `Campo obrigatório ausente: ${campo}` });
@@ -44,7 +43,6 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
       return;
     }
 
-    // Busca o caso pelo casoReferencia
     const foundCase = await Case.findOne({ casoReferencia });
     if (!foundCase) {
       res.status(404).json({ msg: "Caso não encontrado com esse código de referência." });
@@ -60,8 +58,8 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
       }
 
       evidence = await Evidence.create({
-        caso: foundCase._id, // Associa o _id do caso
-        casoReferencia, // Mantém casoReferencia para referência
+        caso: foundCase._id,
+        casoReferencia,
         tipo: "imagem",
         categoria,
         vitima,
@@ -79,8 +77,8 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
       }
 
       evidence = await Evidence.create({
-        caso: foundCase._id, // Associa o _id do caso
-        casoReferencia, // Mantém casoReferencia para referência
+        caso: foundCase._id,
+        casoReferencia, 
         tipo: "texto",
         categoria,
         vitima,
@@ -93,7 +91,6 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
       });
     }
 
-    // Atualiza o array de evidências no documento do caso
     await Case.updateOne(
       { _id: foundCase._id },
       { $push: { evidencias: evidence._id } }
@@ -109,7 +106,6 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
   async updateEvidence(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { evidenceId } = req.params;
-      // Lista apenas dos campos que PODEM ser atualizados
       const allowedFields = [
         "casoReferencia",
         "tipo",
@@ -169,6 +165,7 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
   },
 
 // Listar evidências
+// Aplicavel com filtros de pesquisa, data, status, responsável, caso de referência, cidade e estado.
 async listEvidences(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const {

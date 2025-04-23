@@ -43,7 +43,6 @@ async createCase(req: CustomRequest, res: Response, next: NextFunction): Promise
       return;
     }
 
-    // Verifica se já existe um caso com o mesmo código de referência
     const existingCase = await Case.findOne({ casoReferencia: casoReferencia.trim() });
     if (existingCase) {
       res.status(409).json({ msg: "Já existe um caso com esse código de referência." });
@@ -70,7 +69,6 @@ async createCase(req: CustomRequest, res: Response, next: NextFunction): Promise
   }
 },
 
-  // Listar evidências de um caso específico
   getEvidencesByCaseId: async (req: Request, res: Response) => {
     try {
       const { caseId } = req.params;
@@ -81,6 +79,7 @@ async createCase(req: CustomRequest, res: Response, next: NextFunction): Promise
       res.status(500).json({ msg: "Erro ao buscar evidências do caso." });
     }
   },
+
 
   // Editar Caso
 async updateCase(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -137,7 +136,10 @@ async updateCase(req: Request, res: Response, next: NextFunction): Promise<void>
     }
   },
 
- // Listar todos os casos ou com filtros
+ // Listar Casos
+ // Essa função agora aceita um novo parâmetro `somenteArray` que, se definido como "true", retorna apenas um array simples de casos sem paginação.
+ // Se não for definido ou for "false", a paginação padrão é aplicada.
+ // Aplica-se também a filtros de pesquisa, data, status, responsável, caso de referência, cidade e estado.
  async listCases(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const {

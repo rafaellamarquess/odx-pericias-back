@@ -11,7 +11,6 @@ router.post("/", authenticateToken, checkPermissions([Perfil.ADMIN, Perfil.PERIT
 router.get("/", authenticateToken, checkPermissions([Perfil.ADMIN, Perfil.PERITO]), CaseController.listCases);
 router.put("/:caseId", authenticateToken, checkPermissions([Perfil.ADMIN, Perfil.PERITO]), CaseController.updateCase);
 router.delete("/:caseId", authenticateToken, checkPermissions([Perfil.ADMIN, Perfil.PERITO]), CaseController.deleteCase);
-
 router.get("/:caseId/evidences",authenticateToken, checkPermissions([Perfil.ADMIN, Perfil.PERITO]), CaseController.getEvidencesByCaseId);
 
 export default router;
