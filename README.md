@@ -44,14 +44,14 @@ Este é um projeto backend para um sistema de gestão de casos forenses.
 
 ```mermaid
 classDiagram
-
+    %% =================== USUÁRIOS =====================
     class User {
         +String nome
         +String email
         +String senha
-        +String role
-        +String RG
-        +String CRO (opcional para Perito)
+        +String perfil
+        +String rg
+        +String cro (opcional para Perito)
         +login()
         +logout()
     }
@@ -64,45 +64,56 @@ classDiagram
 
     class Perito {
         +cadastrarCaso()
-        +analisarEvidencias()
-        +gerarLaudo()
+        +cadastrarEvidencias()
+        +gerarRelatório()
     }
     Perito --|> User
 
     class Assistente {
-        +coletarEvidencias()
-        +enviarDados()
+        +cadastrarEvidencias()
     }
     Assistente --|> User
 
+    %% =================== CASO =====================
     class Case {
         +String id
         +String titulo
         +String descricao
         +String status
-        +Date dataAbertura
-        +Date dataFechamento
+        +String responsavel
+        +String cidade
+        +String estado
+        +String casoReferencia
+        +Date dataCriacao
+        +List~Evidence~ evidencias
         +addEvidence()
         +generateReport()
         +updateStatus()
     }
 
+    %% =================== EVIDÊNCIAS =====================
     class Evidence {
         +String id
         +String tipo
-        +Date dataColeta
-        +User coletadoPor
+        +String categoria
+        +Date dataUpload
+        +String vitima
+        +String sexo
+        +String estadoCorpo
+        +String lesoes
+        +String coletadoPor
+        +String conteudo (para TextEvidence)
+        +String imagemURL (para ImageEvidence)
+        +String laudo
         +upload()
     }
 
     class ImageEvidence {
-        +String imagemURL
         +processarImagem()
     }
     ImageEvidence --|> Evidence
 
     class TextEvidence {
-        +String conteudo
         +analiseDeTexto()
     }
     TextEvidence --|> Evidence
@@ -110,19 +121,28 @@ classDiagram
     class Report {
         +String id
         +String titulo
-        +String conteudo
-        +User peritoResponsavel
-        +Date dataCriacao
+        +String descricao
+        +String objetoPericia
+        +String analiseTecnica
+        +String metodoUtilizado
+        +String destinatario
+        +String materiaisUtilizados
+        +String examesRealizados
+        +String consideracoesTecnicoPericiais
+        +String conclusaoTecnica
+        +Date criadoEm
+        +Boolean assinadoDigitalmente
+        +List~Evidence~ evidencias
+        +Case caso
         +assinarDigital()
         +exportarPDF()
     }
 
-    class ComparisonResult {
-        +String id
-        +String resultado
-        +Float precisao
-        +User analisadoPor
-        +Date dataAnalise
-        +visualizarComparacao()
-    }
+    %% =================== RELAÇÕES =====================
+    Evidence --> Case : pertence a
+    Case --> User : responsavel
+    Report --> Case : refere-se a
+    Report --> Evidence : analisa
+    Evidence --> User : coletadoPor
 ```
+
