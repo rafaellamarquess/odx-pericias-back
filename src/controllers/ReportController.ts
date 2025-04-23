@@ -1,14 +1,14 @@
 import { Report } from "../models/ReportModel";
 import { Evidence } from "../models/EvidenceModel";
 import { Case } from "../models/CaseModel";
-import puppeteer from "puppeteer";
+import puppeteer from 'puppeteer-core';
+import chromium from '@sparticuz/chromium';
 import { NextFunction, Request, Response } from "express";
 import mongoose from "mongoose";
 import { SignPdf } from "node-signpdf";
 import fs from "fs";
 
 export const ReportController = {
-  
   async createReport(req: Request, res: Response): Promise<void> {
     try {
       const {
@@ -25,15 +25,24 @@ export const ReportController = {
         casoReferencia,
       } = req.body;
   
-          // Validação de campos obrigatórios
-        if (!titulo || !descricao || !objetoPericia || !analiseTecnica || !metodoUtilizado ||
-          !destinatario || !materiaisUtilizados || !examesRealizados ||
-          !consideracoesTecnicoPericiais || !conclusaoTecnica || !casoReferencia) {
+      // Validação de campos obrigatórios
+      if (
+        !titulo ||
+        !descricao ||
+        !objetoPericia ||
+        !analiseTecnica ||
+        !metodoUtilizado ||
+        !destinatario ||
+        !materiaisUtilizados ||
+        !examesRealizados ||
+        !consideracoesTecnicoPericiais ||
+        !conclusaoTecnica ||
+        !casoReferencia
+      ) {
         res.status(400).json({ msg: "Todos os campos obrigatórios devem ser preenchidos." });
         return;
       }
-      
-
+  
       // Busca o caso pelo _id
       const caso = await Case.findById(casoReferencia);
       if (!caso) {
@@ -93,18 +102,24 @@ export const ReportController = {
         ${evidenciasHtml}
       `;
   
-      // Geração do PDF
-      const browser = await puppeteer.launch();
+      // Configuração do Puppeteer com @sparticuz/chromium
+      const browser = await puppeteer.launch({
+        args: chromium.args,
+        defaultViewport: chromium.defaultViewport,
+        executablePath: await chromium.executablePath(),
+        headless: chromium.headless,
+      });
+  
       const page = await browser.newPage();
       await page.setContent(htmlContent);
       const pdfBuffer = await page.pdf({ format: 'A4' });
       await browser.close();
   
       res.status(200).json({ msg: 'Relatório criado com sucesso.', report, pdf: pdfBuffer });
-  
     } catch (error) {
       console.error("Erro ao gerar relatório:", error);
-      res.status(500).json({ msg: 'Erro ao gerar o relatório.', error });
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      res.status(500).json({ msg: 'Erro ao gerar o relatório.', error: errorMessage });
     }
   },
   
