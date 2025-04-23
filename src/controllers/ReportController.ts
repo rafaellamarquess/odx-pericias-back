@@ -7,6 +7,139 @@ import { NextFunction, Request, Response } from "express";
 import mongoose from "mongoose";
 import fs from "fs";
 import axios from "axios";
+import moment from "moment";
+import User from "../models/UserModel";
+
+// Interface for req.user (from JWT middleware)
+// Interface for req.user (from JWT middleware)
+interface AuthenticatedRequest extends Request {
+  user?: {
+    id: string;
+    perfil: string;
+    nome?: string;
+  };
+}
+
+// Utility function to generate PDF content
+async function generatePdfContent(report: IReport, caso: ICase, evidencias: IEvidence[], signedBy?: string): Promise<string> {
+  const caseDetails = `
+    <h2>Detalhes do Caso</h2>
+    <p><strong>Título:</strong> ${caso.titulo}</p>
+    <p><strong>Descrição:</strong> ${caso.descricao}</p>
+    <p><strong>Status:</strong> ${caso.status}</p>
+    <p><strong>Responsável:</strong> ${caso.responsavel}</p>
+    <p><strong>Cidade:</strong> ${caso.cidade}</p>
+    <p><strong>Estado:</strong> ${caso.estado}</p>
+    <p><strong>Data de Criação:</strong> ${moment(caso.dataCriacao).format('DD/MM/YYYY')}</p>
+    <p><strong>Referência do Caso:</strong> ${caso.casoReferencia}</p>
+  `;
+
+  const evidenciasHtml = await Promise.all(
+    evidencias.map(async (e: IEvidence) => {
+      let imageBase64 = "";
+      if (e.tipo === "imagem" && e.imagemURL) {
+        try {
+          const response = await axios.get<ArrayBuffer>(e.imagemURL, {
+            responseType: 'arraybuffer',
+          });
+          imageBase64 = Buffer.from(response.data).toString('base64');
+          console.log(`Imagem ${e.imagemURL} convertida, tamanho base64: ${imageBase64.length}`);
+        } catch (err) {
+          console.error(`Erro ao carregar imagem ${e.imagemURL}:`, err);
+          imageBase64 = "";
+        }
+      }
+      return `
+        <div class="evidence-box">
+          <h4>Evidência: ${e.categoria} (${e.tipo})</h4>
+          ${
+            e.tipo === "imagem" && imageBase64
+              ? `<img src="data:image/jpeg;base64,${imageBase64}" style="max-width: 300px; border: 1px solid #ddd; border-radius: 4px;" />`
+              : `<p><strong>Conteúdo:</strong> ${e.conteudo || "N/A"}</p>`
+          }
+          <p><strong>Data de Upload:</strong> ${moment(e.dataUpload).format('DD/MM/YYYY HH:mm')}</p>
+          <p><strong>Vítima:</strong> ${e.vitima}</p>
+          <p><strong>Sexo:</strong> ${e.sexo}</p>
+          <p><strong>Estado do Corpo:</strong> ${e.estadoCorpo}</p>
+          <p><strong>Lesões:</strong> ${e.lesoes || "N/A"}</p>
+          <p><strong>Coletado por:</strong> ${e.coletadoPor}</p>
+          <p><strong>Laudo:</strong> ${e.laudo || "N/A"}</p>
+        </div>
+      `;
+    })
+  ).then((htmls) => htmls.join(""));
+
+  const signatureSection = signedBy
+    ? `
+        <div class="signature-box">
+          <h3>Assinatura Digital</h3>
+          <p><strong>Assinado por:</strong> ${signedBy}</p>
+          <p><strong>Data:</strong> ${moment().format('DD/MM/YYYY HH:mm')}</p>
+        </div>
+      `
+    : "";
+
+  return `
+    <html>
+      <head>
+        <meta charset="UTF-8">
+        <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+        <style>
+          body { font-family: 'Roboto', sans-serif; margin: 40px; color: #333; line-height: 1.6; }
+          h1 { color: #1a3c6e; text-align: center; border-bottom: 2px solid #1a3c6e; padding-bottom: 10px; }
+          h2 { color: #1a3c6e; margin-top: 20px; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+          h3 { color: #2c5282; margin-top: 15px; }
+          h4 { color: #2c5282; margin-bottom: 10px; }
+          p { margin: 5px 0; }
+          .section { margin-bottom: 20px; padding: 15px; background-color: #f9fafb; border-radius: 8px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+          .evidence-box { margin-bottom: 20px; padding: 15px; border: 1px solid #e2e8f0; border-radius: 8px; background-color: #fff; }
+          .signature-box { margin-top: 30px; padding: 15px; border-top: 2px solid #1a3c6e; text-align: center; background-color: #edf2f7; border-radius: 8px; }
+          img { margin: 10px 0; }
+          strong { color: #2d3748; }
+        </style>
+      </head>
+      <body>
+        <h1>Relatório de Perícia</h1>
+        <div class="section">
+          <h2>Informações do Relatório</h2>
+          <p><strong>Título:</strong> ${report.titulo}</p>
+          <p><strong>Descrição:</strong> ${report.descricao}</p>
+          <p><strong>Objeto da Perícia:</strong> ${report.objetoPericia}</p>
+          <p><strong>Análise Técnica:</strong> ${report.analiseTecnica}</p>
+          <p><strong>Método Utilizado:</strong> ${report.metodoUtilizado}</p>
+          <p><strong>Destinatário:</strong> ${report.destinatario}</p>
+          <p><strong>Materiais Utilizados:</strong> ${report.materiaisUtilizados}</p>
+          <p><strong>Exames Realizados:</strong> ${report.examesRealizados}</p>
+          <p><strong>Considerações Técnicas Periciais:</strong> ${report.consideracoesTecnicoPericiais}</p>
+          <p><strong>Conclusão Técnica:</strong> ${report.conclusaoTecnica}</p>
+        </div>
+        <div class="section">
+          ${caseDetails}
+        </div>
+        <div class="section">
+          <h2>Evidências</h2>
+          ${evidenciasHtml}
+        </div>
+        ${signatureSection}
+      </body>
+    </html>
+  `;
+}
+
+// Utility function to generate PDF
+async function generatePdf(htmlContent: string): Promise<Buffer> {
+  const browser = await puppeteer.launch({
+    args: chromium.args,
+    defaultViewport: chromium.defaultViewport,
+    executablePath: await chromium.executablePath(),
+    headless: chromium.headless,
+  });
+  const page = await browser.newPage();
+  await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+  const pdfBuffer = await page.pdf({ format: 'A4' });
+  await browser.close();
+  return Buffer.from(pdfBuffer);
+}
 
 export const ReportController = {
   async createReport(req: Request, res: Response): Promise<void> {
@@ -25,7 +158,6 @@ export const ReportController = {
         casoReferencia,
       } = req.body;
 
-      // Validação de campos obrigatórios
       if (
         !titulo ||
         !descricao ||
@@ -39,25 +171,22 @@ export const ReportController = {
         !conclusaoTecnica ||
         !casoReferencia
       ) {
-        res.status(400).json({ msg: "Todos os campos obrigatórios devem ser preenchidos." });
+        res.status(400).json({ msg: "Todos os campos obrigatórios devem be preenchidos." });
         return;
       }
 
-      // Busca o caso pelo _id
       const caso = await Case.findById(casoReferencia);
       if (!caso) {
         res.status(404).json({ msg: 'Caso não encontrado.' });
         return;
       }
 
-      // Busca todas as evidências associadas a esse caso
       const evidencias = await Evidence.find({ caso: caso._id });
       if (!evidencias || evidencias.length === 0) {
         res.status(404).json({ msg: 'Nenhuma evidência encontrada para este caso.' });
         return;
       }
 
-      // Criação do relatório
       const report = new Report({
         titulo,
         descricao,
@@ -75,71 +204,12 @@ export const ReportController = {
       });
       await report.save();
 
-      // Converter imagens para base64 para evitar falhas de carregamento
-      const evidenciasHtml = await Promise.all(
-        evidencias.map(async (e: IEvidence) => {
-          let imageBase64 = "";
-          if (e.tipo === "imagem" && e.imagemURL) {
-            try {
-              const response = await axios.get<ArrayBuffer>(e.imagemURL, {
-                responseType: 'arraybuffer',
-              });
-              imageBase64 = Buffer.from(response.data).toString('base64');
-              console.log(`Imagem ${e.imagemURL} convertida, tamanho base64: ${imageBase64.length}`);
-            } catch (err) {
-              console.error(`Erro ao carregar imagem ${e.imagemURL}:`, err);
-              imageBase64 = "";
-            }
-          }
-          return `
-            <div style="margin-bottom: 20px;">
-              <h4>Evidência (${e.tipo}) - ${e.categoria}</h4>
-              ${
-                e.tipo === "imagem" && imageBase64
-                  ? `<img src="data:image/jpeg;base64,${imageBase64}" style="max-width: 300px;" />`
-                  : `<p>${e.conteudo || ""}</p>`
-              }
-              <p><strong>Coletado por:</strong> ${e.coletadoPor || "Desconhecido"}</p>
-            </div>
-          `;
-        })
-      ).then((htmls) => htmls.join(""));
+      const htmlContent = await generatePdfContent(report, caso, evidencias);
+      const pdfBuffer = await generatePdf(htmlContent);
 
-      const htmlContent = `
-        <h1>Relatório de Perícia</h1>
-        <h2>${titulo}</h2>
-        <p><strong>Caso:</strong> ${caso.titulo}</p>
-        <p><strong>Descrição:</strong> ${descricao}</p>
-        <p><strong>Objeto da Perícia:</strong> ${objetoPericia}</p>
-        <p><strong>Análise Técnica:</strong> ${analiseTecnica}</p>
-        <p><strong>Método Utilizado:</strong> ${metodoUtilizado}</p>
-        <p><strong>Destinatário:</strong> ${destinatario}</p>
-        <p><strong>Materiais Utilizados:</strong> ${materiaisUtilizados}</p>
-        <p><strong>Exames Realizados:</strong> ${examesRealizados}</p>
-        <p><strong>Considerações Técnicas Periciais:</strong> ${consideracoesTecnicoPericiais}</p>
-        <p><strong>Conclusão Técnica:</strong> ${conclusaoTecnica}</p>
-        <h3>Evidências:</h3>
-        ${evidenciasHtml}
-      `;
-
-      // Configuração do Puppeteer
-      const browser = await puppeteer.launch({
-        args: chromium.args,
-        defaultViewport: chromium.defaultViewport,
-        executablePath: await chromium.executablePath(),
-        headless: chromium.headless,
-      });
-      const page = await browser.newPage();
-      await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
-      const pdfBuffer = await page.pdf({ format: 'A4' });
-
-      // Debug: salvar PDF localmente
       fs.writeFileSync('debug.pdf', pdfBuffer);
       console.log('PDF salvo para debug em debug.pdf');
 
-      await browser.close();
-
-      // Converter pdfBuffer para base64
       const pdfBase64 = Buffer.from(pdfBuffer).toString('base64');
 
       res.status(200).json({ msg: 'Relatório criado com sucesso.', report, pdf: pdfBase64 });
@@ -150,14 +220,13 @@ export const ReportController = {
     }
   },
 
-  async assinarDigitalmente(req: Request, res: Response): Promise<void> {
+  async assinarDigitalmente(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const { reportId } = req.params;
+
+      // Fetch report with populated case and evidences
       const report = await Report.findById(reportId)
-        .populate<{ caso: ICase }>({
-          path: 'caso',
-          select: 'titulo',
-        })
+        .populate<{ caso: ICase }>('caso')
         .populate<{ evidencias: IEvidence[] }>('evidencias');
 
       if (!report) {
@@ -165,80 +234,37 @@ export const ReportController = {
         return;
       }
 
-      // Verificar se caso foi populado corretamente
-      if (!report.caso || !('titulo' in report.caso)) {
+      if (!report.caso) {
         res.status(500).json({ msg: "Erro: Caso não foi populado corretamente." });
         return;
       }
 
-      // Gerar PDF com marca de assinatura simulada
-      const evidenciasHtml = await Promise.all(
-        report.evidencias.map(async (e: IEvidence) => {
-          let imageBase64 = "";
-          if (e.tipo === "imagem" && e.imagemURL) {
-            try {
-              const response = await axios.get<ArrayBuffer>(e.imagemURL, {
-                responseType: 'arraybuffer',
-              });
-              imageBase64 = Buffer.from(response.data).toString('base64');
-              console.log(`Imagem ${e.imagemURL} convertida, tamanho base64: ${imageBase64.length}`);
-            } catch (err) {
-              console.error(`Erro ao carregar imagem ${e.imagemURL}:`, err);
-              imageBase64 = "";
-            }
-          }
-          return `
-            <div style="margin-bottom: 20px;">
-              <h4>Evidência (${e.tipo}) - ${e.categoria}</h4>
-              ${
-                e.tipo === "imagem" && imageBase64
-                  ? `<img src="data:image/jpeg;base64,${imageBase64}" style="max-width: 300px;" />`
-                  : `<p>${e.conteudo || ""}</p>`
-              }
-              <p><strong>Coletado por:</strong> ${e.coletadoPor || "Desconhecido"}</p>
-            </div>
-          `;
-        })
-      ).then((htmls) => htmls.join(""));
+      // Get the authenticated user's name
+      let signedBy = "Usuário Desconhecido";
+      if (req.user?.id) {
+        const user = await User.findById(req.user.id).select('nome');
+        if (user) {
+          signedBy = user.nome;
+        }
+      }
 
-      const htmlContent = `
-        <h1>Relatório de Perícia</h1>
-        <h2>${report.titulo}</h2>
-        <p><strong>Caso:</strong> ${report.caso.titulo}</p>
-        <p><strong>Descrição:</strong> ${report.descricao}</p>
-        <p><strong>Objeto da Perícia:</strong> ${report.objetoPericia}</p>
-        <p><strong>Análise Técnica:</strong> ${report.analiseTecnica}</p>
-        <p><strong>Método Utilizado:</strong> ${report.metodoUtilizado}</p>
-        <p><strong>Destinatário:</strong> ${report.destinatario}</p>
-        <p><strong>Materiais Utilizados:</strong> ${report.materiaisUtilizados}</p>
-        <p><strong>Exames Realizados:</strong> ${report.examesRealizados}</p>
-        <p><strong>Considerações Técnicas Periciais:</strong> ${report.consideracoesTecnicoPericiais}</p>
-        <p><strong>Conclusão Técnica:</strong> ${report.conclusaoTecnica}</p>
-        <h3>Evidências:</h3>
-        ${evidenciasHtml}
-        <div style="margin-top: 20px;">
-          <h3>Assinatura Digital Simulada</h3>
-          <p>Assinado por: Usuário Administrador</p>
-          <p>Data: ${new Date().toLocaleString()}</p>
-        </div>
-      `;
+      // Convert Mongoose array to plain array
+      const plainEvidencias: IEvidence[] = report.evidencias.map((e: IEvidence) => e.toObject());
 
-      const browser = await puppeteer.launch({
-        args: chromium.args,
-        defaultViewport: chromium.defaultViewport,
-        executablePath: await chromium.executablePath(),
-        headless: chromium.headless,
-      });
-      const page = await browser.newPage();
-      await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
-      const pdfBuffer = await page.pdf({ format: 'A4' });
+      // Generate PDF with signature
+      const htmlContent = await generatePdfContent(
+        report.toObject() as unknown as IReport, 
+        report.caso, 
+        plainEvidencias, 
+        signedBy
+      );
+      const pdfBuffer = await generatePdf(htmlContent);
 
       // Debug: salvar PDF assinado
       fs.writeFileSync('debug_signed.pdf', pdfBuffer);
       console.log('PDF assinado salvo para debug em debug_signed.pdf');
 
-      await browser.close();
-
+      // Update report
       report.assinadoDigitalmente = true;
       await report.save();
 
@@ -252,7 +278,7 @@ export const ReportController = {
       res.status(500).json({ msg: 'Erro ao assinar o relatório.', error: errorMessage });
     }
   },
-
+  
   async updateReport(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { reportId } = req.params;
