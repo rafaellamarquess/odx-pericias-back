@@ -4,6 +4,8 @@ import { Case } from "../models/CaseModel";
 import puppeteer from "puppeteer";
 import { NextFunction, Request, Response } from "express";
 import mongoose from "mongoose";
+import { SignPdf } from "node-signpdf";
+import fs from "fs";
 
 export const ReportController = {
   
@@ -23,6 +25,15 @@ export const ReportController = {
         casoReferencia,
       } = req.body;
   
+          // Validação de campos obrigatórios
+        if (!titulo || !descricao || !objetoPericia || !analiseTecnica || !metodoUtilizado ||
+          !destinatario || !materiaisUtilizados || !examesRealizados ||
+          !consideracoesTecnicoPericiais || !conclusaoTecnica || !casoReferencia) {
+        res.status(400).json({ msg: "Todos os campos obrigatórios devem ser preenchidos." });
+        return;
+      }
+      
+
       // Busca o caso pelo _id
       const caso = await Case.findById(casoReferencia);
       if (!caso) {
@@ -101,51 +112,38 @@ export const ReportController = {
     try {
       const { reportId } = req.params;
       const report = await Report.findById(reportId).populate('caso evidencias');
-  
       if (!report) {
         res.status(404).json({ msg: "Relatório não encontrado." });
         return;
       }
   
-      report.assinadoDigitalmente = true;
-      await report.save();
-  
-      // Regenerar o PDF com marca de assinatura
+      // Geração do PDF (como já está no código)
       const browser = await puppeteer.launch();
       const page = await browser.newPage();
-  
       const evidenciasHtml = report.evidencias.map((e: any) => `
         <div style="margin-bottom: 20px;">
-          <h4>Evidência (${e.tipo}) - ${e.categoria}</h4>
-          ${e.tipo === "imagem" ? `<img src="${e.imagemURL}" style="max-width: 300px;" />` : `<p>${e.conteudo}</p>`}
-          <p><strong>Coletado por:</strong> ${e.coletadoPor || "Desconhecido"}</p>
+          <h4>Evidência (${sanitizeHtml(e.tipo)}) - ${sanitizeHtml(e.categoria)}</h4>
+          ${e.tipo === "imagem" ? `<img src="${sanitizeHtml(e.imagemURL)}" style="max-width: 300px;" />` : `<p>${sanitizeHtml(e.conteudo || "")}</p>`}
+          <p><strong>Coletado por:</strong> ${sanitizeHtml(e.coletadoPor || "Desconhecido")}</p>
         </div>
       `).join("");
   
-      const htmlContent = `
-        <h1>Relatório de Perícia</h1>
-        <h2>${report.titulo}</h2>
-        <p><strong>Caso:</strong> ${(report.caso as any).titulo}</p>
-        <p><strong>Descrição:</strong> ${report.descricao}</p>
-        <p><strong>Objeto da Perícia:</strong> ${report.objetoPericia}</p>
-        <p><strong>Análise Técnica:</strong> ${report.analiseTecnica}</p>
-        <p><strong>Método Utilizado:</strong> ${report.metodoUtilizado}</p>
-        <p><strong>Destinatário:</strong> ${report.destinatario}</p>
-        <p><strong>Materiais Utilizados:</strong> ${report.materiaisUtilizados}</p>
-        <p><strong>Exames Realizados:</strong> ${report.examesRealizados}</p>
-        <p><strong>Considerações Técnicas Periciais:</strong> ${report.consideracoesTecnicoPericiais}</p>
-        <p><strong>Conclusão Técnica:</strong> ${report.conclusaoTecnica}</p>
-        <h3>Evidências:</h3>
-        ${evidenciasHtml}
-        <p style="margin-top: 20px;"><strong>Assinado Digitalmente em:</strong> ${new Date().toLocaleString()}</p>
-      `;
-  
+      const htmlContent = `...`; // Seu HTML atual
       await page.setContent(htmlContent);
       const pdfBuffer = await page.pdf({ format: 'A4' });
-  
-      res.status(200).json({ msg: `Relatório "${report.titulo}" assinado digitalmente.`, pdf: pdfBuffer });
-  
       await browser.close();
+  
+      // Assinatura digital real
+      const signPdf = new SignPdf();
+      const signedPdf = signPdf.sign(pdfBuffer, {
+        certificate: fs.readFileSync("path/to/certificate.p12"),
+        password: "sua-senha",
+      });
+  
+      report.assinadoDigitalmente = true;
+      await report.save();
+  
+      res.status(200).json({ msg: `Relatório "${report.titulo}" assinado digitalmente.`, pdf: signedPdf });
     } catch (err) {
       next(err);
     }
@@ -303,3 +301,7 @@ export const ReportController = {
     }
   }
 };
+function sanitizeHtml(categoria: any) {
+  throw new Error("Function not implemented.");
+}
+

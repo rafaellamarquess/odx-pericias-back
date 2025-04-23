@@ -1,7 +1,7 @@
 import mongoose, { Document, Schema } from "mongoose";
 
 interface IEvidence extends Document {
-  casoReferencia: string;
+  caso: mongoose.Types.ObjectId; 
   tipo: "imagem" | "texto";
   categoria: string;
   dataUpload: Date;
@@ -9,14 +9,14 @@ interface IEvidence extends Document {
   sexo: "masculino" | "feminino" | "indeterminado";
   estadoCorpo: "inteiro" | "fragmentado" | "carbonizado" | "putrefacto" | "esqueleto";
   lesoes?: string;
-  coletadoPor: string; // Agora é uma string com o nome do coletor
+  coletadoPor: string;
   conteudo?: string;
   imagemURL?: string;
   laudo?: string;
 }
 
 const EvidenceSchema = new Schema<IEvidence>({
-  casoReferencia: { type: String, required: true },
+  caso: { type: Schema.Types.ObjectId, ref: "Case", required: true }, 
   tipo: { type: String, enum: ["imagem", "texto"], required: true },
   categoria: { type: String, required: true },
   dataUpload: { type: Date, default: Date.now },
@@ -28,7 +28,7 @@ const EvidenceSchema = new Schema<IEvidence>({
     required: true
   },
   lesoes: { type: String },
-  coletadoPor: { type: String, required: true }, // Alterado para string
+  coletadoPor: { type: String, required: true },
   conteudo: { type: String },
   imagemURL: { type: String },
   laudo: { type: String }

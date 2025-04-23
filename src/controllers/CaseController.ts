@@ -71,17 +71,16 @@ async createCase(req: CustomRequest, res: Response, next: NextFunction): Promise
 },
 
   // Listar evidências de um caso específico
-getEvidencesByCaseId: async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const evidencias = await Evidence.find({ caseId: id });
-    res.status(200).json({ evidencias });
-  } catch (error) {
-    console.error("Erro ao buscar evidências do caso:", error);
-    res.status(500).json({ msg: "Erro ao buscar evidências do caso." });
-  }
-},
-
+  getEvidencesByCaseId: async (req: Request, res: Response) => {
+    try {
+      const { caseId } = req.params;
+      const evidencias = await Evidence.find({ caso: caseId });
+      res.status(200).json({ evidencias });
+    } catch (error) {
+      console.error("Erro ao buscar evidências do caso:", error);
+      res.status(500).json({ msg: "Erro ao buscar evidências do caso." });
+    }
+  },
 
   // Editar Caso
 async updateCase(req: Request, res: Response, next: NextFunction): Promise<void> {
