@@ -1,7 +1,8 @@
 import mongoose, { Document, Schema } from "mongoose";
 
 interface IEvidence extends Document {
-  caso: mongoose.Types.ObjectId; 
+  caso: mongoose.Types.ObjectId;
+  casoReferencia?: string; // Adicionado para suportar o campo existente
   tipo: "imagem" | "texto";
   categoria: string;
   dataUpload: Date;
@@ -16,7 +17,8 @@ interface IEvidence extends Document {
 }
 
 const EvidenceSchema = new Schema<IEvidence>({
-  caso: { type: Schema.Types.ObjectId, ref: "Case", required: true }, 
+  caso: { type: Schema.Types.ObjectId, ref: "Case", required: true },
+  casoReferencia: { type: String }, // Campo opcional para referência legível
   tipo: { type: String, enum: ["imagem", "texto"], required: true },
   categoria: { type: String, required: true },
   dataUpload: { type: Date, default: Date.now },

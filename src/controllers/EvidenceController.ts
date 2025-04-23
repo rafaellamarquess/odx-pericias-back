@@ -44,6 +44,7 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
       return;
     }
 
+    // Busca o caso pelo casoReferencia
     const foundCase = await Case.findOne({ casoReferencia });
     if (!foundCase) {
       res.status(404).json({ msg: "Caso não encontrado com esse código de referência." });
@@ -59,6 +60,8 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
       }
 
       evidence = await Evidence.create({
+        caso: foundCase._id, // Associa o _id do caso
+        casoReferencia, // Mantém casoReferencia para referência
         tipo: "imagem",
         categoria,
         vitima,
@@ -67,7 +70,7 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
         lesoes,
         coletadoPor,
         imagemURL: req.file.path,
-        casoReferencia
+        dataUpload: new Date()
       });
     } else {
       if (!conteudo) {
@@ -76,6 +79,8 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
       }
 
       evidence = await Evidence.create({
+        caso: foundCase._id, // Associa o _id do caso
+        casoReferencia, // Mantém casoReferencia para referência
         tipo: "texto",
         categoria,
         vitima,
@@ -84,12 +89,13 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
         lesoes,
         coletadoPor,
         conteudo,
-        casoReferencia
+        dataUpload: new Date()
       });
     }
 
+    // Atualiza o array de evidências no documento do caso
     await Case.updateOne(
-      { casoReferencia },
+      { _id: foundCase._id },
       { $push: { evidencias: evidence._id } }
     );
 
