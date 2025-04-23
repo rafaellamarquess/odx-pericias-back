@@ -1,12 +1,12 @@
-import { Report } from "../models/ReportModel";
-import { Evidence } from "../models/EvidenceModel";
-import { Case } from "../models/CaseModel";
+import { Report, IReport } from "../models/ReportModel";
+import { Evidence, IEvidence } from "../models/EvidenceModel";
+import { Case, ICase } from "../models/CaseModel";
 import puppeteer from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
 import { NextFunction, Request, Response } from "express";
 import mongoose from "mongoose";
-import { SignPdf } from "node-signpdf";
 import fs from "fs";
+import axios from "axios";
 
 export const ReportController = {
   async createReport(req: Request, res: Response): Promise<void> {
@@ -24,7 +24,7 @@ export const ReportController = {
         conclusaoTecnica,
         casoReferencia,
       } = req.body;
-  
+
       // Validação de campos obrigatórios
       if (
         !titulo ||
@@ -42,21 +42,21 @@ export const ReportController = {
         res.status(400).json({ msg: "Todos os campos obrigatórios devem ser preenchidos." });
         return;
       }
-  
+
       // Busca o caso pelo _id
       const caso = await Case.findById(casoReferencia);
       if (!caso) {
         res.status(404).json({ msg: 'Caso não encontrado.' });
         return;
       }
-  
+
       // Busca todas as evidências associadas a esse caso
       const evidencias = await Evidence.find({ caso: caso._id });
       if (!evidencias || evidencias.length === 0) {
         res.status(404).json({ msg: 'Nenhuma evidência encontrada para este caso.' });
         return;
       }
-  
+
       // Criação do relatório
       const report = new Report({
         titulo,
@@ -71,20 +71,40 @@ export const ReportController = {
         conclusaoTecnica,
         caso: caso._id,
         evidencias: evidencias.map(e => e._id),
-        assinadoDigitalmente: false
+        assinadoDigitalmente: false,
       });
-  
       await report.save();
-  
-      // Geração do conteúdo HTML para o PDF
-      const evidenciasHtml = evidencias.map(e => `
-        <div style="margin-bottom: 20px;">
-          <h4>Evidência (${e.tipo}) - ${e.categoria}</h4>
-          ${e.tipo === "imagem" ? `<img src="${e.imagemURL}" style="max-width: 300px;" />` : `<p>${e.conteudo}</p>`}
-          <p><strong>Coletado por:</strong> ${e.coletadoPor || "Desconhecido"}</p>
-        </div>
-      `).join("");
-  
+
+      // Converter imagens para base64 para evitar falhas de carregamento
+      const evidenciasHtml = await Promise.all(
+        evidencias.map(async (e: IEvidence) => {
+          let imageBase64 = "";
+          if (e.tipo === "imagem" && e.imagemURL) {
+            try {
+              const response = await axios.get<ArrayBuffer>(e.imagemURL, {
+                responseType: 'arraybuffer',
+              });
+              imageBase64 = Buffer.from(response.data).toString('base64');
+              console.log(`Imagem ${e.imagemURL} convertida, tamanho base64: ${imageBase64.length}`);
+            } catch (err) {
+              console.error(`Erro ao carregar imagem ${e.imagemURL}:`, err);
+              imageBase64 = "";
+            }
+          }
+          return `
+            <div style="margin-bottom: 20px;">
+              <h4>Evidência (${e.tipo}) - ${e.categoria}</h4>
+              ${
+                e.tipo === "imagem" && imageBase64
+                  ? `<img src="data:image/jpeg;base64,${imageBase64}" style="max-width: 300px;" />`
+                  : `<p>${e.conteudo || ""}</p>`
+              }
+              <p><strong>Coletado por:</strong> ${e.coletadoPor || "Desconhecido"}</p>
+            </div>
+          `;
+        })
+      ).then((htmls) => htmls.join(""));
+
       const htmlContent = `
         <h1>Relatório de Perícia</h1>
         <h2>${titulo}</h2>
@@ -101,66 +121,135 @@ export const ReportController = {
         <h3>Evidências:</h3>
         ${evidenciasHtml}
       `;
-  
-      // Configuração do Puppeteer com @sparticuz/chromium
+
+      // Configuração do Puppeteer
       const browser = await puppeteer.launch({
         args: chromium.args,
         defaultViewport: chromium.defaultViewport,
         executablePath: await chromium.executablePath(),
         headless: chromium.headless,
       });
-  
       const page = await browser.newPage();
-      await page.setContent(htmlContent);
+      await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
       const pdfBuffer = await page.pdf({ format: 'A4' });
+
+      // Debug: salvar PDF localmente
+      fs.writeFileSync('debug.pdf', pdfBuffer);
+      console.log('PDF salvo para debug em debug.pdf');
+
       await browser.close();
-  
-      res.status(200).json({ msg: 'Relatório criado com sucesso.', report, pdf: pdfBuffer });
+
+      // Converter pdfBuffer para base64
+      const pdfBase64 = Buffer.from(pdfBuffer).toString('base64');
+
+      res.status(200).json({ msg: 'Relatório criado com sucesso.', report, pdf: pdfBase64 });
     } catch (error) {
       console.error("Erro ao gerar relatório:", error);
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
       res.status(500).json({ msg: 'Erro ao gerar o relatório.', error: errorMessage });
     }
   },
-  
-  async assinarDigitalmente(req: Request, res: Response, next: NextFunction): Promise<void> {
+
+  async assinarDigitalmente(req: Request, res: Response): Promise<void> {
     try {
       const { reportId } = req.params;
-      const report = await Report.findById(reportId).populate('caso evidencias');
+      const report = await Report.findById(reportId)
+        .populate<{ caso: ICase }>({
+          path: 'caso',
+          select: 'titulo',
+        })
+        .populate<{ evidencias: IEvidence[] }>('evidencias');
+
       if (!report) {
         res.status(404).json({ msg: "Relatório não encontrado." });
         return;
       }
-  
-      // Geração do PDF (como já está no código)
-      const browser = await puppeteer.launch();
-      const page = await browser.newPage();
-      const evidenciasHtml = report.evidencias.map((e: any) => `
-        <div style="margin-bottom: 20px;">
-          <h4>Evidência (${sanitizeHtml(e.tipo)}) - ${sanitizeHtml(e.categoria)}</h4>
-          ${e.tipo === "imagem" ? `<img src="${sanitizeHtml(e.imagemURL)}" style="max-width: 300px;" />` : `<p>${sanitizeHtml(e.conteudo || "")}</p>`}
-          <p><strong>Coletado por:</strong> ${sanitizeHtml(e.coletadoPor || "Desconhecido")}</p>
+
+      // Verificar se caso foi populado corretamente
+      if (!report.caso || !('titulo' in report.caso)) {
+        res.status(500).json({ msg: "Erro: Caso não foi populado corretamente." });
+        return;
+      }
+
+      // Gerar PDF com marca de assinatura simulada
+      const evidenciasHtml = await Promise.all(
+        report.evidencias.map(async (e: IEvidence) => {
+          let imageBase64 = "";
+          if (e.tipo === "imagem" && e.imagemURL) {
+            try {
+              const response = await axios.get<ArrayBuffer>(e.imagemURL, {
+                responseType: 'arraybuffer',
+              });
+              imageBase64 = Buffer.from(response.data).toString('base64');
+              console.log(`Imagem ${e.imagemURL} convertida, tamanho base64: ${imageBase64.length}`);
+            } catch (err) {
+              console.error(`Erro ao carregar imagem ${e.imagemURL}:`, err);
+              imageBase64 = "";
+            }
+          }
+          return `
+            <div style="margin-bottom: 20px;">
+              <h4>Evidência (${e.tipo}) - ${e.categoria}</h4>
+              ${
+                e.tipo === "imagem" && imageBase64
+                  ? `<img src="data:image/jpeg;base64,${imageBase64}" style="max-width: 300px;" />`
+                  : `<p>${e.conteudo || ""}</p>`
+              }
+              <p><strong>Coletado por:</strong> ${e.coletadoPor || "Desconhecido"}</p>
+            </div>
+          `;
+        })
+      ).then((htmls) => htmls.join(""));
+
+      const htmlContent = `
+        <h1>Relatório de Perícia</h1>
+        <h2>${report.titulo}</h2>
+        <p><strong>Caso:</strong> ${report.caso.titulo}</p>
+        <p><strong>Descrição:</strong> ${report.descricao}</p>
+        <p><strong>Objeto da Perícia:</strong> ${report.objetoPericia}</p>
+        <p><strong>Análise Técnica:</strong> ${report.analiseTecnica}</p>
+        <p><strong>Método Utilizado:</strong> ${report.metodoUtilizado}</p>
+        <p><strong>Destinatário:</strong> ${report.destinatario}</p>
+        <p><strong>Materiais Utilizados:</strong> ${report.materiaisUtilizados}</p>
+        <p><strong>Exames Realizados:</strong> ${report.examesRealizados}</p>
+        <p><strong>Considerações Técnicas Periciais:</strong> ${report.consideracoesTecnicoPericiais}</p>
+        <p><strong>Conclusão Técnica:</strong> ${report.conclusaoTecnica}</p>
+        <h3>Evidências:</h3>
+        ${evidenciasHtml}
+        <div style="margin-top: 20px;">
+          <h3>Assinatura Digital Simulada</h3>
+          <p>Assinado por: Usuário Administrador</p>
+          <p>Data: ${new Date().toLocaleString()}</p>
         </div>
-      `).join("");
-  
-      const htmlContent = `...`; // Seu HTML atual
-      await page.setContent(htmlContent);
-      const pdfBuffer = await page.pdf({ format: 'A4' });
-      await browser.close();
-  
-      // Assinatura digital real
-      const signPdf = new SignPdf();
-      const signedPdf = signPdf.sign(pdfBuffer, {
-        certificate: fs.readFileSync("path/to/certificate.p12"),
-        password: "sua-senha",
+      `;
+
+      const browser = await puppeteer.launch({
+        args: chromium.args,
+        defaultViewport: chromium.defaultViewport,
+        executablePath: await chromium.executablePath(),
+        headless: chromium.headless,
       });
-  
+      const page = await browser.newPage();
+      await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+      const pdfBuffer = await page.pdf({ format: 'A4' });
+
+      // Debug: salvar PDF assinado
+      fs.writeFileSync('debug_signed.pdf', pdfBuffer);
+      console.log('PDF assinado salvo para debug em debug_signed.pdf');
+
+      await browser.close();
+
       report.assinadoDigitalmente = true;
       await report.save();
-  
-      res.status(200).json({ msg: `Relatório "${report.titulo}" assinado digitalmente.`, pdf: signedPdf });
-    } catch (err) {
-      next(err);
+
+      // Converter para base64
+      const pdfBase64 = Buffer.from(pdfBuffer).toString('base64');
+
+      res.status(200).json({ msg: `Relatório "${report.titulo}" assinado digitalmente.`, pdf: pdfBase64 });
+    } catch (error) {
+      console.error("Erro ao assinar relatório:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      res.status(500).json({ msg: 'Erro ao assinar o relatório.', error: errorMessage });
     }
   },
 
