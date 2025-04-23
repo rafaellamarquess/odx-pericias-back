@@ -44,6 +44,7 @@ Este é um projeto backend para um sistema de gestão de casos forenses.
 
 ```mermaid
 classDiagram
+   direction LR
     %% =================== USUÁRIOS =====================
     class User {
         +String nome
