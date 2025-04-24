@@ -103,8 +103,8 @@ classDiagram
         +String estadoCorpo
         +String lesoes
         +String coletadoPor
-        +String conteudo (para TextEvidence)
-        +String imagemURL (para ImageEvidence)
+        +String conteudo 
+        +String imagemURL
         +String laudo
          +addEvidence()
         +updateEvidence()
