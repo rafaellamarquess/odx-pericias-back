@@ -87,9 +87,9 @@ classDiagram
         +String casoReferencia
         +Date dataCriacao
         +List~Evidence~ evidencias
-        +addEvidence()
-        +generateReport()
-        +updateStatus()
+        +addCase()
+        +updateCase()
+        +deleteCase()
     }
 
     %% =================== EVIDÊNCIAS =====================
@@ -106,7 +106,9 @@ classDiagram
         +String conteudo (para TextEvidence)
         +String imagemURL (para ImageEvidence)
         +String laudo
-        +upload()
+         +addEvidence()
+        +updateEvidence()
+        +deleteEvidence()
     }
 
     class ImageEvidence {
@@ -135,8 +137,8 @@ classDiagram
         +Boolean assinadoDigitalmente
         +List~Evidence~ evidencias
         +Case caso
+         +generateReport()
         +assinarDigital()
-        +exportarPDF()
     }
 
     %% =================== RELAÇÕES =====================
