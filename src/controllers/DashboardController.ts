@@ -47,7 +47,7 @@ export const DashboardController = {
         totalCasosPromise,
         Evidence.aggregate(criarAgrupamento("vitima", "evidence")),
         Evidence.aggregate(criarAgrupamento("sexo", "evidence")),
-        Evidence.aggregate(criarAgrupamento("estado", "caso")),
+        Evidence.aggregate(criarAgrupamento("estadoCorpo", "evidence")), 
         Evidence.aggregate(criarAgrupamento("lesoes", "evidence")),
         Evidence.aggregate(criarAgrupamento("cidade", "caso")),
       ]);
