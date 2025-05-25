@@ -15,7 +15,7 @@ app.use(express.json());
 
 const frontEndUrl = process.env.FRONTEND_URL || "http://localhost:3000";
 app.use(cors({
-  origin: frontEndUrl,
+  origin: 'http://localhost:8081',
   methods: ["GET", "POST", "PUT", "DELETE"],
 }));
 
