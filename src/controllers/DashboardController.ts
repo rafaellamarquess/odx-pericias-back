@@ -1,3 +1,4 @@
+// src/controllers/DashboardController.ts
 import { Request, Response, NextFunction } from "express";
 import { Evidence } from "../models/EvidenceModel";
 
@@ -106,7 +107,7 @@ export const DashboardController = {
         Evidence.aggregate(criarAgrupamento("sexo", "evidence", "pizza")),
         Evidence.aggregate(criarAgrupamento("estadoCorpo", "evidence", "barra")),
         Evidence.aggregate(criarAgrupamento("lesoes", "evidence", "barra")),
-        Evidence.aggregate(criarAgrupamento("cidade", "caso", "pizza")), // Alterado para 'pizza'
+        Evidence.aggregate(criarAgrupamento("cidade", "caso", "barra")), // Alterado para 'barra'
       ]);
 
       const totalCasos = totalCasosResult[0]?.total || 0;
