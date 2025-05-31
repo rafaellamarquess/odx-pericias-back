@@ -1,6 +1,8 @@
 import mongoose, { Document, Schema, Types } from "mongoose";
-import { ICase } from "./CaseModel"; // Importe a interface de Case
-import { IEvidence } from "./EvidenceModel"; // Importe a interface de Evidence
+import { ICase } from "./CaseModel";
+import { IEvidence } from "./EvidenceModel";
+import { IVitima } from "./VitimaModel";
+import { ILaudo } from "./LaudoModel";
 
 interface IReport extends Document {
   titulo: string;
@@ -13,8 +15,11 @@ interface IReport extends Document {
   examesRealizados: string;
   consideracoesTecnicoPericiais: string;
   conclusaoTecnica: string;
-  caso: Types.ObjectId | ICase; // Pode ser ObjectId ou ICase após populate
-  evidencias: Types.Array<IEvidence>;
+  caso: Types.ObjectId | ICase;
+  evidencias: Types.Array<Types.ObjectId> | IEvidence[];
+  vitimas: Types.Array<Types.ObjectId> | IVitima[];
+  laudos: Types.Array<Types.ObjectId> | ILaudo[];
+  audioURL?: string; 
   criadoEm: Date;
   assinadoDigitalmente: boolean;
 }
@@ -35,7 +40,25 @@ const ReportSchema = new Schema<IReport>({
     ref: "Case",
     required: true,
   },
-  evidencias: [{ type: Schema.Types.ObjectId, ref: "Evidence" }],
+  evidencias: [
+    {
+      type: Schema.Types.ObjectId,
+      ref: "Evidence",
+    },
+  ],
+  vitimas: [
+    {
+      type: Schema.Types.ObjectId,
+      ref: "Vitima",
+    },
+  ],
+  laudos: [
+    {
+      type: Schema.Types.ObjectId,
+      ref: "Laudo",
+    },
+  ],
+  audioURL: { type: String },
   criadoEm: {
     type: Date,
     default: Date.now,

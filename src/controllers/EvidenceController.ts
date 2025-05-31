@@ -2,6 +2,7 @@ import { NextFunction, Response, Request } from "express";
 import { Evidence } from "../models/EvidenceModel";
 import { Case } from "../models/CaseModel";
 import mongoose from "mongoose";
+import { Vitima } from "../models/VitimaModel";
 
 export const EvidenceController = {
   
@@ -11,7 +12,6 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
     const camposObrigatorios = [
       "categoria",
       "tipo",
-      "vitima",
       "sexo",
       "estadoCorpo",
       "coletadoPor",
@@ -26,30 +26,53 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
     }
 
     const {
-      categoria,
-      tipo,
-      vitima,
+      nome,
+      dataNascimento,
+      idadeAproximada,
+      nacionalidade,
+      cidade,
       sexo,
       estadoCorpo,
+      imagens, // opcional, usado apenas se quiser salvar direto
       lesoes,
+      identificada,
+      categoria,
+      tipo,
       coletadoPor,
       conteudo,
       casoReferencia
     } = req.body;
 
+    // Validação do tipo
     const tiposValidos = ["imagem", "texto"];
     if (!tiposValidos.includes(tipo)) {
       res.status(400).json({ msg: "Tipo de evidência inválido. Use 'imagem' ou 'texto'." });
       return;
     }
 
+    // Buscar o caso
     const foundCase = await Case.findOne({ casoReferencia });
     if (!foundCase) {
       res.status(404).json({ msg: "Caso não encontrado com esse código de referência." });
       return;
     }
 
-    let evidence;
+    // Criar nova vítima
+    const novaVitima = await Vitima.create({
+      nome,
+      dataNascimento,
+      idadeAproximada,
+      nacionalidade,
+      cidade,
+      sexo,
+      estadoCorpo,
+      lesoes,
+      imagens: req.file && req.file.path ? [req.file.path] : imagens || [],
+      identificada: identificada ?? false
+    });
+
+    // Criar evidência
+    let novaEvidencia;
 
     if (tipo === "imagem") {
       if (!req.file || !req.file.path) {
@@ -57,18 +80,13 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
         return;
       }
 
-      evidence = await Evidence.create({
+      novaEvidencia = await Evidence.create({
         caso: foundCase._id,
-        casoReferencia,
-        tipo: "imagem",
+        vitima: novaVitima._id,
+        tipo,
         categoria,
-        vitima,
-        sexo,
-        estadoCorpo,
-        lesoes,
         coletadoPor,
-        imagemURL: req.file.path,
-        dataUpload: new Date()
+        imagemURL: req.file.path
       });
     } else {
       if (!conteudo) {
@@ -76,75 +94,110 @@ async createEvidence(req: Request, res: Response, next: NextFunction): Promise<v
         return;
       }
 
-      evidence = await Evidence.create({
+      novaEvidencia = await Evidence.create({
         caso: foundCase._id,
-        casoReferencia, 
-        tipo: "texto",
+        vitima: novaVitima._id,
+        tipo,
         categoria,
-        vitima,
-        sexo,
-        estadoCorpo,
-        lesoes,
         coletadoPor,
-        conteudo,
-        dataUpload: new Date()
+        conteudo
       });
     }
 
+    // Atualizar o caso com a nova evidência
     await Case.updateOne(
       { _id: foundCase._id },
-      { $push: { evidencias: evidence._id } }
+      { $push: { evidencias: novaEvidencia._id } }
     );
 
-    res.status(200).json({ msg: "Evidência adicionada com sucesso.", evidence });
+    res.status(201).json({
+      msg: "Evidência e vítima cadastradas com sucesso.",
+      vitima: novaVitima,
+      evidence: novaEvidencia
+    });
   } catch (err) {
     next(err);
   }
 },
 
-  //Editar evidências
-  async updateEvidence(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const { evidenceId } = req.params;
-      const allowedFields = [
-        "casoReferencia",
-        "tipo",
-        "categoria",
-        "vitima",
-        "sexo",
-        "estadoCorpo",
-        "lesoes",
-        "coletadoPor",
-        "conteudo",
-        "imagemURL",
-        "laudo"
-      ];
-  
-      const updateFields: any = {};
-  
-      allowedFields.forEach((field) => {
-        if (req.body[field] !== undefined) {
-          updateFields[field] = req.body[field];
-        }
-      });
-  
-      if (req.body.dataUpload !== undefined) {
-        delete req.body.dataUpload;
-      }
-  
-      const updatedEvidence = await Evidence.findByIdAndUpdate(evidenceId, updateFields, { new: true });
-  
-      if (!updatedEvidence) {
-        res.status(404).json({ msg: "Evidência não encontrada." });
-        return;
-      }
-  
-      res.status(200).json({ msg: "Evidência atualizada com sucesso.", updatedEvidence });
-    } catch (err) {
-      next(err);
-    }
-  },  
+  // Editar evidência
+async updateEvidence(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { evidenceId } = req.params;
 
+    const allowedEvidenceFields = [
+      "tipo",
+      "categoria",
+      "coletadoPor",
+      "conteudo"
+    ];
+
+    const allowedVitimaFields = [
+      "nome",
+      "dataNascimento",
+      "idadeAproximada",
+      "nacionalidade",
+      "cidade",
+      "sexo",
+      "estadoCorpo",
+      "lesoes",
+      "imagens",
+      "identificada"
+    ];
+
+    const evidenceUpdate: any = {};
+    const vitimaUpdate: any = {};
+
+    // Separar os campos de atualização para cada entidade
+    allowedEvidenceFields.forEach((field) => {
+      if (req.body[field] !== undefined) {
+        evidenceUpdate[field] = req.body[field];
+      }
+    });
+
+    allowedVitimaFields.forEach((field) => {
+      if (req.body[field] !== undefined) {
+        vitimaUpdate[field] = req.body[field];
+      }
+    });
+
+    // Upload de nova imagem (substituição de imagem)
+    if (req.file && req.file.path) {
+      evidenceUpdate.imagemURL = req.file.path;
+    }
+
+    // Atualizar evidência
+    const existingEvidence = await Evidence.findById(evidenceId);
+    if (!existingEvidence) {
+      res.status(404).json({ msg: "Evidência não encontrada." });
+      return;
+    }
+
+    const updatedEvidence = await Evidence.findByIdAndUpdate(
+      evidenceId,
+      evidenceUpdate,
+      { new: true }
+    );
+
+    // Atualizar vítima, se houver campos para isso
+    let updatedVitima = null;
+    if (Object.keys(vitimaUpdate).length > 0) {
+      updatedVitima = await Vitima.findByIdAndUpdate(
+        existingEvidence.vitima,
+        vitimaUpdate,
+        { new: true }
+      );
+    }
+
+    res.status(200).json({
+      msg: "Evidência atualizada com sucesso.",
+      updatedEvidence,
+      updatedVitima
+    });
+  } catch (err) {
+    next(err);
+  }
+},
 
   //Deletar evidência
   async deleteEvidence(req: Request, res: Response, next: NextFunction): Promise<void> {

@@ -1,6 +1,6 @@
 import mongoose, { Document, Schema, Types } from "mongoose";
-import { IEvidence } from "./EvidenceModel"; // Importe a interface de Evidence
-import moment from "moment";  // ou qualquer outra biblioteca de manipulação de datas
+import { IEvidence } from "./EvidenceModel";
+import moment from "moment"; 
 
 interface ICase extends Document {
   titulo: string;

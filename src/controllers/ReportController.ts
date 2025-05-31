@@ -1,16 +1,20 @@
 import { Report, IReport } from "../models/ReportModel";
 import { Evidence, IEvidence } from "../models/EvidenceModel";
 import { Case, ICase } from "../models/CaseModel";
-import puppeteer from 'puppeteer-core';
-import chromium from '@sparticuz/chromium';
+import { Vitima, IVitima } from "../models/VitimaModel";
+import { Laudo, ILaudo } from "../models/LaudoModel";
+import puppeteer from "puppeteer-core";
+import chromium from "@sparticuz/chromium";
 import { NextFunction, Request, Response } from "express";
 import mongoose from "mongoose";
 import fs from "fs";
 import axios from "axios";
 import moment from "moment";
 import User from "../models/UserModel";
+import upload from "../middlewares/uploadMiddleware"; // Ensure upload is correctly imported as a middleware function
 
-// Interface  pra req.user (JWT middleware)
+
+// Interface para req.user (JWT middleware)
 interface AuthenticatedRequest extends Request {
   user?: {
     id: string;
@@ -19,13 +23,29 @@ interface AuthenticatedRequest extends Request {
   };
 }
 
-// Para gerar o conteudo do relatorio
-async function generatePdfContent(report: IReport, caso: ICase, evidencias: IEvidence[], signedBy?: string): Promise<string> {
+// Função para validar URL do Cloudinary
+function isValidCloudinaryURL(url: string): boolean {
+  return (
+    typeof url === "string" &&
+    url.startsWith("https://res.cloudinary.com/") &&
+    (url.includes("/audio/") || url.includes(".mp3") || url.includes(".wav"))
+  );
+}
+
+// Função para gerar o conteúdo do relatório em HTML
+async function generatePdfContent(
+  report: IReport,
+  caso: ICase,
+  evidencias: IEvidence[],
+  vitimas: IVitima[],
+  laudos: ILaudo[],
+  signedBy?: string
+): Promise<string> {
   // Buscar o nome do responsável no modelo User
-  let responsavelNome = "N/A"; // Valor padrão caso o responsável não seja encontrado
+  let responsavelNome = "N/A";
   if (caso.responsavel) {
     try {
-      const user = await User.findById(caso.responsavel).select('nome').exec();
+      const user = await User.findById(caso.responsavel).select("nome").exec();
       if (user && user.nome) {
         responsavelNome = user.nome;
       }
@@ -34,6 +54,7 @@ async function generatePdfContent(report: IReport, caso: ICase, evidencias: IEvi
     }
   }
 
+  // Seção de detalhes do caso
   const caseDetails = `
     <h2>Detalhes do Caso</h2>
     <p><strong>Título:</strong> ${caso.titulo}</p>
@@ -42,25 +63,65 @@ async function generatePdfContent(report: IReport, caso: ICase, evidencias: IEvi
     <p><strong>Responsável:</strong> ${responsavelNome}</p>
     <p><strong>Cidade:</strong> ${caso.cidade}</p>
     <p><strong>Estado:</strong> ${caso.estado}</p>
-    <p><strong>Data de Criação:</strong> ${moment(caso.dataCriacao).format('DD/MM/YYYY')}</p>
+    <p><strong>Data de Criação:</strong> ${moment(caso.dataCriacao).format("DD/MM/YYYY")}</p>
     <p><strong>Referência do Caso:</strong> ${caso.casoReferencia}</p>
   `;
 
+  // Seção de vítimas
+  const vitimasHtml = vitimas
+    .map(
+      (v: IVitima) => `
+        <div class="vitima-box">
+          <h4>Vítima: ${v.nome || "Não identificado"}</h4>
+          <p><strong>Sexo:</strong> ${v.sexo}</p>
+          <p><strong>Estado do Corpo:</strong> ${v.estadoCorpo}</p>
+          <p><strong>Idade Aproximada:</strong> ${v.idadeAproximada || "N/A"}</p>
+          <p><strong>Nacionalidade:</strong> ${v.nacionalidade || "N/A"}</p>
+          <p><strong>Cidade:</strong> ${v.cidade || "N/A"}</p>
+          <p><strong>Data de Nascimento:</strong> ${
+            v.dataNascimento ? moment(v.dataNascimento).format("DD/MM/YYYY") : "N/A"
+          }</p>
+          <p><strong>Lesões:</strong> ${v.lesoes || "N/A"}</p>
+          <p><strong>Identificada:</strong> ${v.identificada ? "Sim" : "Não"}</p>
+          ${
+            v.imagens && v.imagens.length > 0
+              ? v.imagens
+                  .map(
+                    (img) => `
+                      <img src="${img}" style="max-width: 200px; border: 1px solid #ddd; border-radius: 4px; margin: 5px;" />
+                    `
+                  )
+                  .join("")
+              : "<p><strong>Imagens:</strong> Nenhuma imagem disponível</p>"
+          }
+        </div>
+      `
+    )
+    .join("");
+
+  // Seção de evidências
   const evidenciasHtml = await Promise.all(
     evidencias.map(async (e: IEvidence) => {
       let imageBase64 = "";
       if (e.tipo === "imagem" && e.imagemURL) {
         try {
           const response = await axios.get<ArrayBuffer>(e.imagemURL, {
-            responseType: 'arraybuffer',
+            responseType: "arraybuffer",
           });
-          imageBase64 = Buffer.from(response.data).toString('base64');
+          imageBase64 = Buffer.from(response.data).toString("base64");
           console.log(`Imagem ${e.imagemURL} convertida, tamanho base64: ${imageBase64.length}`);
         } catch (err) {
           console.error(`Erro ao carregar imagem ${e.imagemURL}:`, err);
           imageBase64 = "";
         }
       }
+
+      // Buscar a vítima associada à evidência
+      const vitima = vitimas.find((v) => v._id.toString() === e.vitima.toString());
+      const vitimaNome = vitima ? vitima.nome || "Não identificado" : "N/A";
+      const vitimaSexo = vitima ? vitima.sexo : "N/A";
+      const vitimaEstadoCorpo = vitima ? vitima.estadoCorpo : "N/A";
+
       return `
         <div class="evidence-box">
           <h4>Evidência: ${e.categoria} (${e.tipo})</h4>
@@ -69,28 +130,57 @@ async function generatePdfContent(report: IReport, caso: ICase, evidencias: IEvi
               ? `<img src="data:image/jpeg;base64,${imageBase64}" style="max-width: 300px; border: 1px solid #ddd; border-radius: 4px;" />`
               : `<p><strong>Conteúdo:</strong> ${e.conteudo || "N/A"}</p>`
           }
-          <p><strong>Data de Upload:</strong> ${moment(e.dataUpload).format('DD/MM/YYYY HH:mm')}</p>
-          <p><strong>Vítima:</strong> ${e.vitima}</p>
-          <p><strong>Sexo:</strong> ${e.sexo}</p>
-          <p><strong>Estado do Corpo:</strong> ${e.estadoCorpo}</p>
-          <p><strong>Lesões:</strong> ${e.lesoes || "N/A"}</p>
+          <p><strong>Data de Upload:</strong> ${moment(e.dataUpload).format("DD/MM/YYYY HH:mm")}</p>
+          <p><strong>Vítima:</strong> ${vitimaNome}</p>
+          <p><strong>Sexo da Vítima:</strong> ${vitimaSexo}</p>
+          <p><strong>Estado do Corpo:</strong> ${vitimaEstadoCorpo}</p>
           <p><strong>Coletado por:</strong> ${e.coletadoPor}</p>
-          <p><strong>Laudo:</strong> ${e.laudo || "N/A"}</p>
         </div>
       `;
     })
   ).then((htmls) => htmls.join(""));
 
+  // Seção de laudos
+  const laudosHtml = await Promise.all(
+    laudos.map(async (l: ILaudo) => {
+      const perito = l.perito ? await User.findById(l.perito).select("nome").exec() : null;
+      return `
+        <div class="laudo-box">
+          <h4>Laudo</h4>
+          <p><strong>Dados Antemortem:</strong> ${l.dadosAntemortem}</p>
+          <p><strong>Dados Postmortem:</strong> ${l.dadosPostmortem}</p>
+          <p><strong>Análise de Lesões:</strong> ${l.analiseLesoes}</p>
+          <p><strong>Conclusão:</strong> ${l.conclusao}</p>
+          <p><strong>Data de Criação:</strong> ${moment(l.dataCriacao).format("DD/MM/YYYY HH:mm")}</p>
+          <p><strong>Perito:</strong> ${perito?.nome || "N/A"}</p>
+          <p><strong>Assinatura Digital:</strong> ${l.assinaturaDigital || "N/A"}</p>
+        </div>
+      `;
+    })
+  ).then((htmls) => htmls.join(""));
+
+  // Seção de assinatura digital
   const signatureSection = signedBy
     ? `
         <div class="signature-box">
           <h3>Assinatura Digital</h3>
           <p><strong>Assinado por:</strong> ${signedBy}</p>
-          <p><strong>Data:</strong> ${moment().format('DD/MM/YYYY HH:mm')}</p>
+          <p><strong>Data:</strong> ${moment().format("DD/MM/YYYY HH:mm")}</p>
         </div>
       `
     : "";
 
+  // Seção de áudio 
+  const audioSection = report.audioURL
+    ? `
+        <div class="section">
+          <h2>Observação em Áudio</h2>
+          <p><strong>Link do Áudio:</strong> <a href="${report.audioURL}">${report.audioURL}</a></p>
+        </div>
+      `
+    : "";
+
+  // HTML completo do relatório
   return `
     <html>
       <head>
@@ -104,7 +194,7 @@ async function generatePdfContent(report: IReport, caso: ICase, evidencias: IEvi
           h4 { color: #2c5282; margin-bottom: 10px; }
           p { margin: 5px 0; }
           .section { margin-bottom: 20px; padding: 15px; background-color: #f9fafb; border-radius: 8px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
-          .evidence-box { margin-bottom: 20px; padding: 15px; border: 1px solid #e2e8f0; border-radius: 8px; background-color: #fff; }
+          .evidence-box, .vitima-box, .laudo-box { margin-bottom: 20px; padding: 15px; border: 1px solid #e2e8f0; border-radius: 8px; background-color: #fff; }
           .signature-box { margin-top: 30px; padding: 15px; border-top: 2px solid #1a3c6e; text-align: center; background-color: #edf2f7; border-radius: 8px; }
           img { margin: 10px 0; }
           strong { color: #2d3748; }
@@ -129,16 +219,26 @@ async function generatePdfContent(report: IReport, caso: ICase, evidencias: IEvi
           ${caseDetails}
         </div>
         <div class="section">
+          <h2>Vítimas</h2>
+          ${vitimasHtml || "<p>Nenhuma vítima associada ao caso.</p>"}
+        </div>
+        <div class="section">
           <h2>Evidências</h2>
-          ${evidenciasHtml}
+          ${evidenciasHtml || "<p>Nenhuma evidência associada ao caso.</p>"}
+        </div>
+        <div class="section">
+          <h2>Laudos</h2>
+          ${laudosHtml || "<p>Nenhum laudo associado ao caso.</p>"}
         </div>
         ${signatureSection}
+        
+        ${audioSection}
       </body>
     </html>
   `;
 }
 
-// Para gerar o relatório em PDF
+// Função para gerar o PDF a partir do HTML
 async function generatePdf(htmlContent: string): Promise<Buffer> {
   const browser = await puppeteer.launch({
     args: chromium.args,
@@ -147,14 +247,23 @@ async function generatePdf(htmlContent: string): Promise<Buffer> {
     headless: chromium.headless,
   });
   const page = await browser.newPage();
-  await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
-  const pdfBuffer = await page.pdf({ format: 'A4' });
+  await page.setContent(htmlContent, { waitUntil: "networkidle0" });
+  const pdfBuffer = await page.pdf({ format: "A4" });
   await browser.close();
   return Buffer.from(pdfBuffer);
 }
 
 export const ReportController = {
-  async createReport(req: Request, res: Response): Promise<void> {
+  // Middleware para upload do áudio
+    uploadAudio: (req: Request, res: Response, next: NextFunction) => {
+      upload.single('audio')(req, res, (err: any) => {
+        if (err) {
+          return res.status(400).json({ msg: "Erro ao fazer upload do áudio.", error: err.message });
+        }
+        next();
+      });
+    },
+  async createReport(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const {
         titulo,
@@ -168,8 +277,10 @@ export const ReportController = {
         consideracoesTecnicoPericiais,
         conclusaoTecnica,
         casoReferencia,
+        audioURL,
       } = req.body;
 
+      // Validação dos campos obrigatórios
       if (
         !titulo ||
         !descricao ||
@@ -183,22 +294,51 @@ export const ReportController = {
         !conclusaoTecnica ||
         !casoReferencia
       ) {
-        res.status(400).json({ msg: "Todos os campos obrigatórios devem be preenchidos." });
+        res.status(400).json({ msg: "Todos os campos obrigatórios devem ser preenchidos." });
         return;
       }
 
+      // Processar áudio
+      let finalAudioURL: string | undefined;
+      if (req.file) {
+        // URL gerada pelo multer-storage-cloudinary
+        finalAudioURL = (req.file as any).path; // Cloudinary URL
+      } else if (audioURL) {
+        // Validar URL fornecida
+        if (!isValidCloudinaryURL(audioURL)) {
+          res.status(400).json({ msg: "URL de áudio inválida. Deve ser uma URL válida do Cloudinary." });
+          return;
+        }
+        finalAudioURL = audioURL;
+      }
+
+      // Buscar o caso
       const caso = await Case.findById(casoReferencia);
       if (!caso) {
-        res.status(404).json({ msg: 'Caso não encontrado.' });
+        res.status(404).json({ msg: "Caso não encontrado." });
         return;
       }
 
+      // Buscar evidências associadas ao caso
       const evidencias = await Evidence.find({ caso: caso._id });
-      if (!evidencias || evidencias.length === 0) {
-        res.status(404).json({ msg: 'Nenhuma evidência encontrada para este caso.' });
+      if (!evidencias.length) {
+        res.status(404).json({ msg: "Nenhuma evidência encontrada para este caso." });
         return;
       }
 
+      // Buscar vítimas associadas às evidências
+      const vitimaIds = Array.from(new Set(evidencias.map((e) => e.vitima.toString())));
+      const vitimas = await Vitima.find({ _id: { $in: vitimaIds } });
+      if (!vitimas.length) {
+        res.status(404).json({ msg: "Nenhuma vítima encontrada para este caso." });
+        return;
+      }
+
+      // Buscar laudos associados às evidências
+      const evidenciaIds = evidencias.map((e) => e._id);
+      const laudos = await Laudo.find({ evidencia: { $in: evidenciaIds } });
+
+      // Criar o relatório
       const report = new Report({
         titulo,
         descricao,
@@ -211,35 +351,43 @@ export const ReportController = {
         consideracoesTecnicoPericiais,
         conclusaoTecnica,
         caso: caso._id,
-        evidencias: evidencias.map(e => e._id),
+        evidencias: evidencias.map((e) => e._id),
+        vitimas: vitimas.map((v) => v._id),
+        laudos: laudos.map((l) => l._id),
+        audioURL: finalAudioURL,
         assinadoDigitalmente: false,
       });
       await report.save();
 
-      const htmlContent = await generatePdfContent(report, caso, evidencias);
+      // Gerar o conteúdo do relatório
+      const htmlContent = await generatePdfContent(report, caso, evidencias, vitimas, laudos);
       const pdfBuffer = await generatePdf(htmlContent);
 
-      fs.writeFileSync('debug.pdf', pdfBuffer);
-      console.log('PDF salvo para debug em debug.pdf');
+      // Salvar PDF para debug
+      fs.writeFileSync("debug.pdf", pdfBuffer);
+      console.log("PDF salvo para debug em debug.pdf");
 
-      const pdfBase64 = Buffer.from(pdfBuffer).toString('base64');
+      // Converter para base64
+      const pdfBase64 = pdfBuffer.toString("base64");
 
-      res.status(200).json({ msg: 'Relatório criado com sucesso.', report, pdf: pdfBase64 });
+      res.status(200).json({ msg: "Relatório criado com sucesso.", report, pdf: pdfBase64 });
     } catch (error) {
       console.error("Erro ao gerar relatório:", error);
-      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
-      res.status(500).json({ msg: 'Erro ao gerar o relatório.', error: errorMessage });
+      const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
+      res.status(500).json({ msg: "Erro ao gerar o relatório.", error: errorMessage });
     }
   },
 
-  // Função para assinar digitalmente o relatório
-  async assinarDigitalmente(req: AuthenticatedRequest, res: Response): Promise<void> {
+  async assinarDigitalmente(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const { reportId } = req.params;
 
+      // Buscar o relatório com as entidades relacionadas
       const report = await Report.findById(reportId)
-        .populate<{ caso: ICase }>('caso')
-        .populate<{ evidencias: IEvidence[] }>('evidencias');
+        .populate<{ caso: ICase }>("caso")
+        .populate<{ evidencias: IEvidence[] }>("evidencias")
+        .populate<{ vitimas: IVitima[] }>("vitimas")
+        .populate<{ laudos: ILaudo[] }>("laudos");
 
       if (!report) {
         res.status(404).json({ msg: "Relatório não encontrado." });
@@ -251,41 +399,59 @@ export const ReportController = {
         return;
       }
 
+      // Usar as vítimas e laudos populados
+      const vitimas = report.vitimas;
+      const laudos = report.laudos;
+
+      if (!vitimas.length) {
+        res.status(404).json({ msg: "Nenhuma vítima encontrada para este caso." });
+        return;
+      }
+
+      // Buscar o nome do usuário que está assinando
       let signedBy = "Usuário Desconhecido";
       if (req.user?.id) {
-        const user = await User.findById(req.user.id).select('nome');
-        if (user) {
+        const user = await User.findById(req.user.id).select("nome").exec();
+        if (user?.nome) {
           signedBy = user.nome;
         }
       }
 
+      // Converter evidências para objeto puro
       const plainEvidencias: IEvidence[] = report.evidencias.map((e: IEvidence) => e.toObject());
 
+      // Gerar o conteúdo do relatório com assinatura
       const htmlContent = await generatePdfContent(
-        report.toObject() as unknown as IReport, 
-        report.caso, 
-        plainEvidencias, 
+        report.toObject() as IReport,
+        report.caso,
+        plainEvidencias,
+        vitimas,
+        laudos,
         signedBy
       );
       const pdfBuffer = await generatePdf(htmlContent);
 
-      fs.writeFileSync('debug_signed.pdf', pdfBuffer);
-      console.log('PDF assinado salvo para debug em debug_signed.pdf');
+      // Salvar PDF para debug
+      fs.writeFileSync("debug_signed.pdf", pdfBuffer);
+      console.log("PDF assinado salvo para debug em debug_signed.pdf");
 
+      // Atualizar o relatório com a assinatura digital
       report.assinadoDigitalmente = true;
       await report.save();
 
       // Converter para base64
-      const pdfBase64 = Buffer.from(pdfBuffer).toString('base64');
+      const pdfBase64 = pdfBuffer.toString("base64");
 
-      res.status(200).json({ msg: `Relatório "${report.titulo}" assinado digitalmente.`, pdf: pdfBase64 });
+      res.status(200).json({
+        msg: `Relatório "${report.titulo}" assinado digitalmente.`,
+        pdf: pdfBase64,
+      });
     } catch (error) {
       console.error("Erro ao assinar relatório:", error);
-      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
-      res.status(500).json({ msg: 'Erro ao assinar o relatório.', error: errorMessage });
+      const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
+      res.status(500).json({ msg: "Erro ao assinar o relatório.", error: errorMessage });
     }
   },
-
 
 
   // GESTÃO DE RELATÓRIO
