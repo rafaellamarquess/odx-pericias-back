@@ -8,16 +8,24 @@ import { User } from "../models/UserModel";
 export const EvidenceController = {
   async createEvidence(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const camposObrigatorios = ["categoria", "tipo", "sexo", "estadoCorpo", "coletadoPor", "casoReferencia"];
+      console.log("Request Body:", req.body);
+      console.log("Request File:", req.file);
+  
+      const { vitimaId } = req.body;
+      const camposObrigatorios = ["categoria", "tipo", "coletadoPor", "casoReferencia"];
+      if (!vitimaId) {
+        // Only require sexo and estadoCorpo when creating a new victim
+        camposObrigatorios.push("sexo", "estadoCorpo");
+      }
+  
       for (const campo of camposObrigatorios) {
         if (!req.body[campo]) {
           res.status(400).json({ msg: `Campo obrigatório ausente: ${campo}` });
           return;
         }
       }
-
+  
       const {
-        vitimaId, // New: Optional existing victim ID
         nome,
         dataNascimento,
         idadeAproximada,
@@ -33,27 +41,27 @@ export const EvidenceController = {
         conteudo,
         casoReferencia,
       } = req.body;
-
+  
       // Validate tipo
       const tiposValidos = ["imagem", "texto"];
       if (!tiposValidos.includes(tipo)) {
         res.status(400).json({ msg: "Tipo de evidência inválido. Use 'imagem' ou 'texto'." });
         return;
       }
-
+  
       // Validate coletadoPor
       if (!mongoose.Types.ObjectId.isValid(coletadoPor)) {
         res.status(400).json({ msg: "ID do coletor inválido." });
         return;
       }
-
+  
       // Find the case
       const foundCase = await Case.findOne({ casoReferencia });
       if (!foundCase) {
         res.status(404).json({ msg: "Caso não encontrado com esse código de referência." });
         return;
       }
-
+  
       let vitima;
       if (vitimaId) {
         // Use existing victim
@@ -74,10 +82,10 @@ export const EvidenceController = {
           estadoCorpo,
           lesoes,
           imagens: req.file && req.file.path ? [req.file.path] : [],
-          identificada: identificada ?? false,
+          identificada: identificada === "true" || identificada === true,
         });
       }
-
+  
       // Create evidence
       let novaEvidencia;
       if (tipo === "imagem") {
@@ -85,7 +93,7 @@ export const EvidenceController = {
           res.status(400).json({ msg: "Arquivo de imagem não enviado." });
           return;
         }
-
+  
         novaEvidencia = await Evidence.create({
           caso: foundCase._id,
           vitima: vitima._id,
@@ -99,7 +107,7 @@ export const EvidenceController = {
           res.status(400).json({ msg: "Conteúdo textual obrigatório para evidência do tipo texto." });
           return;
         }
-
+  
         novaEvidencia = await Evidence.create({
           caso: foundCase._id,
           vitima: vitima._id,
@@ -109,10 +117,10 @@ export const EvidenceController = {
           conteudo,
         });
       }
-
+  
       // Update case with new evidence
       await Case.updateOne({ _id: foundCase._id }, { $push: { evidencias: novaEvidencia._id } });
-
+  
       res.status(201).json({
         msg: "Evidência e vítima cadastradas com sucesso.",
         vitima,
