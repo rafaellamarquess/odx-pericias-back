@@ -5,12 +5,14 @@ import reportRoutes from "./reportRoutes";
 import caseRoutes from "./caseRoutes";
 import authRoutes from "./authRoutes";
 import dashboardRoutes from "./dashboardRoutes";
+import vitimaRoutes from "./vitimaRoutes";
 
 const router = Router();
 
 router.use("/user", userRoutes);
 router.use("/auth", authRoutes);
 router.use("/evidence", evidenceRoutes);
+router.use("/vitima", vitimaRoutes);
 router.use("/report", reportRoutes);
 router.use("/cases", caseRoutes); 
 router.use("/dashboard", dashboardRoutes);
