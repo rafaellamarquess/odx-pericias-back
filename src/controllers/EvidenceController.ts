@@ -1,8 +1,8 @@
 import { NextFunction, Response, Request } from "express";
 import { Evidence } from "../models/EvidenceModel";
 import { Case } from "../models/CaseModel";
-import mongoose from "mongoose";
 import { Vitima } from "../models/VitimaModel";
+import { User } from "../models/UserModel";
 
 export const EvidenceController = {
   
@@ -232,8 +232,9 @@ async listEvidences(req: Request, res: Response, next: NextFunction): Promise<vo
       vitima,
       caso,
       lesoes,
+      cidade,
       page = "1",
-      limit = "10"
+      limit = "10",
     } = req.query;
 
     const pageNum = parseInt(page as string, 10);
@@ -251,7 +252,7 @@ async listEvidences(req: Request, res: Response, next: NextFunction): Promise<vo
 
     const filtros: any = {};
 
-    if (categoria) filtros.categoria = categoria;
+    if (categoria) filtros.categoria = { $regex: categoria as string, $options: "i" };
 
     if (tipo) {
       const tiposValidos = ["imagem", "texto"];
@@ -268,7 +269,7 @@ async listEvidences(req: Request, res: Response, next: NextFunction): Promise<vo
         res.status(400).json({ msg: "Sexo inválido", opcoes: sexosValidos });
         return;
       }
-      filtros["vitima.sexo"] = sexo; // Adjusted to filter on vitima.sexo
+      filtros["vitima.sexo"] = sexo;
     }
 
     if (estadoCorpo) {
@@ -277,7 +278,7 @@ async listEvidences(req: Request, res: Response, next: NextFunction): Promise<vo
         res.status(400).json({ msg: "Estado do corpo inválido", opcoes: estadosValidos });
         return;
       }
-      filtros["vitima.estadoCorpo"] = estadoCorpo; // Adjusted to filter on vitima.estadoCorpo
+      filtros["vitima.estadoCorpo"] = estadoCorpo;
     }
 
     if (vitima) {
@@ -286,7 +287,7 @@ async listEvidences(req: Request, res: Response, next: NextFunction): Promise<vo
         res.status(400).json({ msg: "Valor de vítima inválido", opcoes: opcoesVitima });
         return;
       }
-      filtros["vitima.identificada"] = vitima === "identificada"; // Adjusted to filter on vitima.identificada
+      filtros["vitima.identificada"] = vitima === "identificada";
     }
 
     if (caso) {
@@ -294,15 +295,24 @@ async listEvidences(req: Request, res: Response, next: NextFunction): Promise<vo
     }
 
     if (lesoes) {
-      filtros["vitima.lesoes"] = { $regex: lesoes as string, $options: "i" }; // Adjusted to filter on vitima.lesoes
+      filtros["vitima.lesoes"] = { $regex: lesoes as string, $options: "i" };
+    }
+
+    if (cidade) {
+      filtros["vitima.cidade"] = { $regex: cidade as string, $options: "i" };
     }
 
     if (coletadoPor) {
-      if (!mongoose.Types.ObjectId.isValid(coletadoPor as string)) {
-        res.status(400).json({ msg: "ID do coletor inválido" });
+      // Search for users by name
+      const users = await User.find({ nome: { $regex: coletadoPor as string, $options: "i" } }).select("_id");
+      if (users.length === 0) {
+        res.status(200).json({
+          evidencias: [],
+          paginacao: { total: 0, paginaAtual: pageNum, porPagina: limitNum, totalPaginas: 0 },
+        });
         return;
       }
-      filtros.coletadoPor = new mongoose.Types.ObjectId(coletadoPor as string);
+      filtros.coletadoPor = { $in: users.map((user) => user._id) };
     }
 
     if (dataInicio || dataFim) {
@@ -328,12 +338,15 @@ async listEvidences(req: Request, res: Response, next: NextFunction): Promise<vo
 
     const [evidencias, total] = await Promise.all([
       Evidence.find(filtros)
-        .populate("coletadoPor", "nome")
-        .populate("vitima") // Added to populate the vitima field
+        .populate({
+          path: "coletadoPor",
+          select: "nome",
+        })
+        .populate("vitima")
         .sort({ dataUpload: -1 })
         .skip((pageNum - 1) * limitNum)
         .limit(limitNum),
-      Evidence.countDocuments(filtros)
+      Evidence.countDocuments(filtros),
     ]);
 
     res.status(200).json({
@@ -342,12 +355,72 @@ async listEvidences(req: Request, res: Response, next: NextFunction): Promise<vo
         total,
         paginaAtual: pageNum,
         porPagina: limitNum,
-        totalPaginas: Math.ceil(total / limitNum)
-      }
+        totalPaginas: Math.ceil(total / limitNum),
+      },
     });
-
   } catch (err) {
     next(err);
   }
-}
+},
+
+async getFilterOptions(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const [coletadoPor, casos, cidades, lesoes, sexos] = await Promise.all([
+      // Get unique coletadoPor names
+      Evidence.aggregate([
+        {
+          $lookup: {
+            from: "users",
+            localField: "coletadoPor",
+            foreignField: "_id",
+            as: "coletadoPorDetails",
+          },
+        },
+        { $unwind: "$coletadoPorDetails" },
+        { $group: { _id: "$coletadoPorDetails.nome" } },
+        { $sort: { _id: 1 } },
+        { $project: { value: "$_id", _id: 0 } },
+      ]).then((results) => results.map((r) => r.value)),
+      // Get unique caso values
+      Evidence.distinct("caso").then((casos) => casos.filter((c) => c).sort()),
+      // Get unique cidade values from Vitima
+      Evidence.aggregate([
+        { $lookup: { from: "vitimas", localField: "vitima", foreignField: "_id", as: "vitimaDetails" } },
+        { $unwind: "$vitimaDetails" },
+        { $group: { _id: "$vitimaDetails.cidade" } },
+        { $match: { _id: { $ne: null } } },
+        { $sort: { _id: 1 } },
+        { $project: { value: "$_id", _id: 0 } },
+      ]).then((results) => results.map((r) => r.value)),
+      // Get unique lesoes values from Vitima
+      Evidence.aggregate([
+        { $lookup: { from: "vitimas", localField: "vitima", foreignField: "_id", as: "vitimaDetails" } },
+        { $unwind: "$vitimaDetails" },
+        { $group: { _id: "$vitimaDetails.lesoes" } },
+        { $match: { _id: { $ne: null } } },
+        { $sort: { _id: 1 } },
+        { $project: { value: "$_id", _id: 0 } },
+      ]).then((results) => results.map((r) => r.value)),
+      // Get unique sexo values from Vitima
+      Evidence.aggregate([
+        { $lookup: { from: "vitimas", localField: "vitima", foreignField: "_id", as: "vitimaDetails" } },
+        { $unwind: "$vitimaDetails" },
+        { $group: { _id: "$vitimaDetails.sexo" } },
+        { $match: { _id: { $ne: null } } },
+        { $sort: { _id: 1 } },
+        { $project: { value: "$_id", _id: 0 } },
+      ]).then((results) => results.map((r) => r.value)),
+    ]);
+
+    res.status(200).json({
+      coletadoPor,
+      casos,
+      cidades,
+      lesoes,
+      sexos,
+    });
+  } catch (err) {
+    next(err);
+  }
+},
 };
