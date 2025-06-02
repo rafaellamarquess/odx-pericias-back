@@ -1,30 +1,42 @@
-// src/controllers/DashboardController.ts
 import { Request, Response, NextFunction } from "express";
 import { Evidence } from "../models/EvidenceModel";
 
 export const DashboardController = {
   async filtrarCasos(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { mes, data } = req.query;
+      const { ano, mes } = req.query;
       const matchStage: any = {};
 
-      if (mes && typeof mes === "string") {
-        const [ano, mesNum] = mes.split("-").map(Number);
+      // Validação do parâmetro 'ano'
+      if (ano && typeof ano === "string") {
+        const anoNum = Number(ano);
+        if (isNaN(anoNum) || anoNum < 1900 || anoNum > new Date().getFullYear()) {
+          res.status(400).json({ error: "Parâmetro 'ano' inválido. Use o formato YYYY (ex.: 2025)." });
+          return;
+        }
         matchStage["caso.data"] = {
           $exists: true,
-          $gte: new Date(ano, mesNum - 1, 1),
-          $lte: new Date(ano, mesNum, 0),
+          $gte: new Date(anoNum, 0, 1),
+          $lte: new Date(anoNum, 11, 31, 23, 59, 59, 999),
         };
       }
 
-      if (data && typeof data === "string") {
-        const dataInicio = new Date(data);
-        const dataFim = new Date(data);
-        dataFim.setHours(23, 59, 59, 999);
+      // Validação do parâmetro 'mes'
+      if (mes && typeof mes === "string") {
+        const mesNum = Number(mes);
+        if (isNaN(mesNum) || mesNum < 1 || mesNum > 12) {
+          res.status(400).json({ error: "Parâmetro 'mes' inválido. Use o formato MM (ex.: 05)." });
+          return;
+        }
+        if (!ano) {
+          res.status(400).json({ error: "O parâmetro 'ano' é obrigatório quando 'mes' é fornecido." });
+          return;
+        }
+        const anoNum = Number(ano);
         matchStage["caso.data"] = {
           $exists: true,
-          $gte: dataInicio,
-          $lte: dataFim,
+          $gte: new Date(anoNum, mesNum - 1, 1),
+          $lte: new Date(anoNum, mesNum, 0, 23, 59, 59, 999),
         };
       }
 
@@ -107,7 +119,7 @@ export const DashboardController = {
         Evidence.aggregate(criarAgrupamento("sexo", "evidence", "pizza")),
         Evidence.aggregate(criarAgrupamento("estadoCorpo", "evidence", "barra")),
         Evidence.aggregate(criarAgrupamento("lesoes", "evidence", "barra")),
-        Evidence.aggregate(criarAgrupamento("cidade", "caso", "barra")), // Alterado para 'barra'
+        Evidence.aggregate(criarAgrupamento("cidade", "caso", "barra")),
       ]);
 
       const totalCasos = totalCasosResult[0]?.total || 0;
@@ -123,7 +135,8 @@ export const DashboardController = {
       });
     } catch (err) {
       console.error("Erro ao gerar dados de dashboard:", err);
-      next(err);
+      res.status(500).json({ error: "Erro interno no servidor" });
+      return;
     }
   },
 };
