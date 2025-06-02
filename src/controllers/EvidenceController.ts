@@ -387,22 +387,11 @@ export const EvidenceController = {
           { $sort: { _id: 1 } },
           { $project: { value: "$_id", _id: 0 } },
         ]).then((results) => results.map((r) => r.value)),
-        // Get unique casoReferencia values
-        Evidence.aggregate([
-          {
-            $lookup: {
-              from: "cases",
-              localField: "caso",
-              foreignField: "_id",
-              as: "caseDetails",
-            },
-          },
-          { $unwind: "$caseDetails" },
-          { $group: { _id: "$caseDetails.casoReferencia" } },
-          { $match: { _id: { $ne: null } } },
-          { $sort: { _id: 1 } },
-          { $project: { value: "$_id", _id: 0 } },
-        ]).then((results) => results.map((r) => r.value)),
+        // Get all casoReferencia values from Case collection
+        Case.find({})
+          .select("casoReferencia")
+          .sort({ casoReferencia: 1 })
+          .then((results) => results.map((r) => r.casoReferencia).filter((value) => value !== null)),
         // Get unique cidade values
         Evidence.aggregate([
           { $lookup: { from: "vitimas", localField: "vitima", foreignField: "_id", as: "vitimaDetails" } },
