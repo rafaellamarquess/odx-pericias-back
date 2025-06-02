@@ -268,7 +268,7 @@ async listEvidences(req: Request, res: Response, next: NextFunction): Promise<vo
         res.status(400).json({ msg: "Sexo inválido", opcoes: sexosValidos });
         return;
       }
-      filtros.sexo = sexo;
+      filtros["vitima.sexo"] = sexo; // Adjusted to filter on vitima.sexo
     }
 
     if (estadoCorpo) {
@@ -277,7 +277,7 @@ async listEvidences(req: Request, res: Response, next: NextFunction): Promise<vo
         res.status(400).json({ msg: "Estado do corpo inválido", opcoes: estadosValidos });
         return;
       }
-      filtros.estadoCorpo = estadoCorpo;
+      filtros["vitima.estadoCorpo"] = estadoCorpo; // Adjusted to filter on vitima.estadoCorpo
     }
 
     if (vitima) {
@@ -286,7 +286,7 @@ async listEvidences(req: Request, res: Response, next: NextFunction): Promise<vo
         res.status(400).json({ msg: "Valor de vítima inválido", opcoes: opcoesVitima });
         return;
       }
-      filtros.vitima = vitima;
+      filtros["vitima.identificada"] = vitima === "identificada"; // Adjusted to filter on vitima.identificada
     }
 
     if (caso) {
@@ -294,7 +294,7 @@ async listEvidences(req: Request, res: Response, next: NextFunction): Promise<vo
     }
 
     if (lesoes) {
-      filtros.lesoes = { $regex: lesoes as string, $options: "i" };
+      filtros["vitima.lesoes"] = { $regex: lesoes as string, $options: "i" }; // Adjusted to filter on vitima.lesoes
     }
 
     if (coletadoPor) {
@@ -329,6 +329,7 @@ async listEvidences(req: Request, res: Response, next: NextFunction): Promise<vo
     const [evidencias, total] = await Promise.all([
       Evidence.find(filtros)
         .populate("coletadoPor", "nome")
+        .populate("vitima") // Added to populate the vitima field
         .sort({ dataUpload: -1 })
         .skip((pageNum - 1) * limitNum)
         .limit(limitNum),

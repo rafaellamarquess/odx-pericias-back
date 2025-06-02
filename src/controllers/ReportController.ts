@@ -13,7 +13,6 @@ import moment from "moment";
 import User from "../models/UserModel";
 import upload from "../middlewares/uploadMiddleware"; // Ensure upload is correctly imported as a middleware function
 
-
 // Interface para req.user (JWT middleware)
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -84,8 +83,8 @@ async function generatePdfContent(
           <p><strong>Lesões:</strong> ${v.lesoes || "N/A"}</p>
           <p><strong>Identificada:</strong> ${v.identificada ? "Sim" : "Não"}</p>
           ${
-            v.imagens && v.imagens.length > 0
-              ? v.imagens
+            v.imagemURL && v.imagemURL.length > 0
+              ? v.imagemURL
                   .map(
                     (img) => `
                       <img src="${img}" style="max-width: 200px; border: 1px solid #ddd; border-radius: 4px; margin: 5px;" />
@@ -103,15 +102,15 @@ async function generatePdfContent(
   const evidenciasHtml = await Promise.all(
     evidencias.map(async (e: IEvidence) => {
       let imageBase64 = "";
-      if (e.tipo === "imagem" && e.imagemURL) {
+      if (e.tipo === "imagem" && e.conteudo) {
         try {
-          const response = await axios.get<ArrayBuffer>(e.imagemURL, {
+          const response = await axios.get<ArrayBuffer>(e.conteudo, {
             responseType: "arraybuffer",
           });
           imageBase64 = Buffer.from(response.data).toString("base64");
-          console.log(`Imagem ${e.imagemURL} convertida, tamanho base64: ${imageBase64.length}`);
+          console.log(`Imagem ${e.conteudo} convertida, tamanho base64: ${imageBase64.length}`);
         } catch (err) {
-          console.error(`Erro ao carregar imagem ${e.imagemURL}:`, err);
+          console.error(`Erro ao carregar imagem ${e.conteudo}:`, err);
           imageBase64 = "";
         }
       }
@@ -170,7 +169,7 @@ async function generatePdfContent(
       `
     : "";
 
-  // Seção de áudio 
+  // Seção de áudio
   const audioSection = report.audioURL
     ? `
         <div class="section">
@@ -231,7 +230,6 @@ async function generatePdfContent(
           ${laudosHtml || "<p>Nenhum laudo associado ao caso.</p>"}
         </div>
         ${signatureSection}
-        
         ${audioSection}
       </body>
     </html>
@@ -255,14 +253,15 @@ async function generatePdf(htmlContent: string): Promise<Buffer> {
 
 export const ReportController = {
   // Middleware para upload do áudio
-    uploadAudio: (req: Request, res: Response, next: NextFunction) => {
-      upload.single('audio')(req, res, (err: any) => {
-        if (err) {
-          return res.status(400).json({ msg: "Erro ao fazer upload do áudio.", error: err.message });
-        }
-        next();
-      });
-    },
+  uploadAudio: (req: Request, res: Response, next: NextFunction) => {
+    upload.single("audio")(req, res, (err: any) => {
+      if (err) {
+        return res.status(400).json({ msg: "Erro ao fazer upload do áudio.", error: err.message });
+      }
+      next();
+    });
+  },
+
   async createReport(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const {

@@ -9,7 +9,7 @@ interface IVitima extends Document {
   cidade?: string;
   sexo: "masculino" | "feminino" | "indeterminado";
   estadoCorpo: "inteiro" | "fragmentado" | "carbonizado" | "putrefacto" | "esqueleto";
-  imagens?: string[];  // URLs de imagens
+  imagemURL?: string[];  // URLs de imagens
   lesoes?: string;
   identificada: boolean;
 }
@@ -26,7 +26,7 @@ const VitimaSchema = new Schema<IVitima>({
     enum: ["inteiro", "fragmentado", "carbonizado", "putrefacto", "esqueleto"],
     required: true
   },
-  imagens: [{ type: String }],
+  imagemURL: [{ type: String }],
   lesoes: { type: String },
   identificada: { type: Boolean, default: false }
 });

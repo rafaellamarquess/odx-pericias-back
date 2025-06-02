@@ -8,7 +8,6 @@ interface IEvidence extends Document {
   dataUpload: Date;
   coletadoPor: string;
   conteudo?: string;
-  imagemURL?: string;
 }
 
 const EvidenceSchema = new Schema<IEvidence>({
@@ -19,7 +18,6 @@ const EvidenceSchema = new Schema<IEvidence>({
   dataUpload: { type: Date, default: Date.now },
   coletadoPor: { type: String, required: true },
   conteudo: { type: String },
-  imagemURL: { type: String }
 });
 
 const Evidence = mongoose.model<IEvidence>("Evidence", EvidenceSchema);
