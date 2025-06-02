@@ -70,7 +70,7 @@ async function generatePdf(htmlContent: string): Promise<Buffer> {
 }
 
 const LaudoController = {
-  async createLaudo(req: Request, res: Response, next: NextFunction) {
+  async createLaudo(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const {
         evidencias,
@@ -83,26 +83,33 @@ const LaudoController = {
       } = req.body;
 
       if (
-        !Array.isArray(evidencias) || evidencias.length === 0 ||
-        !perito || !dadosAntemortem || !dadosPostmortem || !analiseLesoes || !conclusao
+        !Array.isArray(evidencias) ||
+        evidencias.length === 0 ||
+        !perito ||
+        !dadosAntemortem ||
+        !dadosPostmortem ||
+        !analiseLesoes ||
+        !conclusao
       ) {
-        return res.status(400).json({ msg: "Todos os campos obrigatórios devem ser preenchidos." });
+        res.status(400).json({ msg: "Todos os campos obrigatórios devem ser preenchidos." });
+        return;
       }
 
       const evidenciasDocs = await Evidence.find({ _id: { $in: evidencias } });
-if (!evidenciasDocs.length) {
-  res.status(404).json({ msg: "Nenhuma evidência válida encontrada." });
-  return;
-}
-
-      const peritoDoc = await User.findById(perito);
-
-      if (evidenciasDocs.length !== evidencias.length) {
-        return res.status(404).json({ msg: "Uma ou mais evidências não foram encontradas." });
+      if (!evidenciasDocs.length) {
+        res.status(404).json({ msg: "Nenhuma evidência válida encontrada." });
+        return;
       }
 
+      const peritoDoc = await User.findById(perito);
       if (!peritoDoc) {
-        return res.status(404).json({ msg: "Perito não encontrado." });
+        res.status(404).json({ msg: "Perito não encontrado." });
+        return;
+      }
+
+      if (evidenciasDocs.length !== evidencias.length) {
+        res.status(404).json({ msg: "Uma ou mais evidências não foram encontradas." });
+        return;
       }
 
       const novoLaudo = await Laudo.create({
@@ -134,9 +141,7 @@ if (!evidenciasDocs.length) {
     }
   },
 
-
-  // Método para atualizar um laudo
-  async updateLaudo(req: Request, res: Response, next: NextFunction) {
+  async updateLaudo(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { laudoId } = req.params;
 
@@ -160,7 +165,8 @@ if (!evidenciasDocs.length) {
         .populate("perito");
 
       if (!updatedLaudo) {
-        return res.status(404).json({ msg: "Laudo não encontrado." });
+        res.status(404).json({ msg: "Laudo não encontrado." });
+        return;
       }
 
       const htmlContent = await generateLaudoPdfContent(
@@ -178,9 +184,7 @@ if (!evidenciasDocs.length) {
     }
   },
 
-
-  // Método para listar todos os laudos
-  async listLaudos(req: Request, res: Response, next: NextFunction) {
+  async listLaudos(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const laudos = await Laudo.find()
         .populate("evidencias")
@@ -192,14 +196,14 @@ if (!evidenciasDocs.length) {
     }
   },
 
-  // Método para obter um laudo específico
-  async deleteLaudo(req: Request, res: Response, next: NextFunction) {
+  async deleteLaudo(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { laudoId } = req.params;
       const deleted = await Laudo.findByIdAndDelete(laudoId);
 
       if (!deleted) {
-        return res.status(404).json({ msg: "Laudo não encontrado para deletar." });
+        res.status(404).json({ msg: "Laudo não encontrado para deletar." });
+        return;
       }
 
       res.status(200).json({ msg: "Laudo deletado com sucesso." });
