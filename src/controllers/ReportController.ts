@@ -83,8 +83,8 @@ async function generatePdfContent(
           <p><strong>Lesões:</strong> ${v.lesoes || "N/A"}</p>
           <p><strong>Identificada:</strong> ${v.identificada ? "Sim" : "Não"}</p>
           ${
-            v.imagemURL && v.imagemURL.length > 0
-              ? v.imagemURL
+            v.imagens && v.imagens.length > 0
+              ? v.imagens
                   .map(
                     (img) => `
                       <img src="${img}" style="max-width: 200px; border: 1px solid #ddd; border-radius: 4px; margin: 5px;" />
@@ -98,23 +98,9 @@ async function generatePdfContent(
     )
     .join("");
 
-  // Seção de evidências
-  const evidenciasHtml = await Promise.all(
-    evidencias.map(async (e: IEvidence) => {
-      let imageBase64 = "";
-      if (e.tipo === "imagem" && e.conteudo) {
-        try {
-          const response = await axios.get<ArrayBuffer>(e.conteudo, {
-            responseType: "arraybuffer",
-          });
-          imageBase64 = Buffer.from(response.data).toString("base64");
-          console.log(`Imagem ${e.conteudo} convertida, tamanho base64: ${imageBase64.length}`);
-        } catch (err) {
-          console.error(`Erro ao carregar imagem ${e.conteudo}:`, err);
-          imageBase64 = "";
-        }
-      }
-
+  // Seção de evidências (removido o carregamento de imagens)
+  const evidenciasHtml = evidencias
+    .map((e: IEvidence) => {
       // Buscar a vítima associada à evidência
       const vitima = vitimas.find((v) => v._id.toString() === e.vitima.toString());
       const vitimaNome = vitima ? vitima.nome || "Não identificado" : "N/A";
@@ -124,11 +110,7 @@ async function generatePdfContent(
       return `
         <div class="evidence-box">
           <h4>Evidência: ${e.categoria} (${e.tipo})</h4>
-          ${
-            e.tipo === "imagem" && imageBase64
-              ? `<img src="data:image/jpeg;base64,${imageBase64}" style="max-width: 300px; border: 1px solid #ddd; border-radius: 4px;" />`
-              : `<p><strong>Conteúdo:</strong> ${e.conteudo || "N/A"}</p>`
-          }
+          <p><strong>Conteúdo:</strong> ${e.conteudo || "N/A"}</p>
           <p><strong>Data de Upload:</strong> ${moment(e.dataUpload).format("DD/MM/YYYY HH:mm")}</p>
           <p><strong>Vítima:</strong> ${vitimaNome}</p>
           <p><strong>Sexo da Vítima:</strong> ${vitimaSexo}</p>
@@ -137,7 +119,7 @@ async function generatePdfContent(
         </div>
       `;
     })
-  ).then((htmls) => htmls.join(""));
+    .join("");
 
   // Seção de laudos
   const laudosHtml = await Promise.all(
