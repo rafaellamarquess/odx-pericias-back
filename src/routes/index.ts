@@ -14,6 +14,7 @@ router.use("/auth", authRoutes);
 router.use("/evidence", evidenceRoutes);
 router.use("/vitima", vitimaRoutes);
 router.use("/report", reportRoutes);
+router.use('/laudo', reportRoutes); // Assuming reportRoutes handles laudo as well
 router.use("/cases", caseRoutes); 
 router.use("/dashboard", dashboardRoutes);
 
