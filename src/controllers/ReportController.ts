@@ -8,11 +8,17 @@ import chromium from "@sparticuz/chromium";
 import { NextFunction, Request, Response } from "express";
 import mongoose from "mongoose";
 import fs from "fs";
-import axios from "axios";
 import moment from "moment";
 import User from "../models/UserModel";
-import upload from "../middlewares/uploadMiddleware"; // Ensure upload is correctly imported as a middleware function
+import upload from "../middlewares/uploadMiddleware";
+import dotenv from "dotenv";
+import OpenAI from "openai";
 
+dotenv.config(); 
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 // Interface para req.user (JWT middleware)
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -51,6 +57,72 @@ async function generatePdfContent(
     } catch (err) {
       console.error(`Erro ao buscar nome do responsável ${caso.responsavel}:`, err);
     }
+  }
+
+  // Preparar dados para o LLM
+  const caseSummary = `
+    Título: ${caso.titulo}
+    Descrição: ${caso.descricao}
+    Status: ${caso.status}
+    Cidade: ${caso.cidade}
+    Estado: ${caso.estado}
+    Data de Criação: ${moment(caso.dataCriacao).format("DD/MM/YYYY")}
+  `;
+
+  const evidenceSummary = evidencias
+    .map((e) => `Categoria: ${e.categoria}, Tipo: ${e.tipo}, Conteúdo: ${e.conteudo || "N/A"}`)
+    .join("\n");
+
+  const victimSummary = vitimas
+    .map((v) => `Nome: ${v.nome || "Não identificado"}, Sexo: ${v.sexo}, Estado do Corpo: ${v.estadoCorpo}`)
+    .join("\n");
+
+  // Chamar o LLM (Grok) para gerar análise técnica e conclusão
+  let analiseTecnica = report.analiseTecnica || "N/A";
+  let conclusaoTecnica = report.conclusaoTecnica || "N/A";
+
+  try {
+    const prompt = `
+      Você é um especialista forense. Com base nas informações fornecidas, gere uma análise técnica e uma conclusão técnica para um relatório pericial. Mantenha o tom profissional e objetivo.
+
+      **Informações do Caso**:
+      ${caseSummary}
+
+      **Evidências**:
+      ${evidenceSummary}
+
+      **Vítimas**:
+      ${victimSummary}
+
+      **Tarefa**:
+      - Gere uma **Análise Técnica** (máximo 200 palavras) descrevendo os métodos e observações.
+      - Gere uma **Conclusão Técnica** (máximo 100 palavras) resumindo os achados.
+
+      Responda em português, no formato:
+      {
+        "analiseTecnica": "...",
+        "conclusaoTecnica": "..."
+      }
+    `;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: "Você é um assistente forense." },
+        { role: "user", content: prompt },
+      ],
+      max_tokens: 500,
+      temperature: 0.7,
+    });
+
+    const llmOutput = completion.choices[0].message.content;
+    const parsedOutput = llmOutput ? JSON.parse(llmOutput) : {};
+    analiseTecnica = parsedOutput.analiseTecnica;
+    conclusaoTecnica = parsedOutput.conclusaoTecnica;
+  } catch (error) {
+    console.error("Erro ao chamar OpenAI:", error);
+    analiseTecnica = report.analiseTecnica || "Análise técnica não disponível.";
+    conclusaoTecnica = report.conclusaoTecnica || "Conclusão técnica não disponível.";
   }
 
   // Seção de detalhes do caso
@@ -98,10 +170,9 @@ async function generatePdfContent(
     )
     .join("");
 
-  // Seção de evidências (removido o carregamento de imagens)
+  // Seção de evidências
   const evidenciasHtml = evidencias
     .map((e: IEvidence) => {
-      // Buscar a vítima associada à evidência
       const vitima = vitimas.find((v) => v._id.toString() === e.vitima.toString());
       const vitimaNome = vitima ? vitima.nome || "Não identificado" : "N/A";
       const vitimaSexo = vitima ? vitima.sexo : "N/A";
@@ -188,13 +259,13 @@ async function generatePdfContent(
           <p><strong>Título:</strong> ${report.titulo}</p>
           <p><strong>Descrição:</strong> ${report.descricao}</p>
           <p><strong>Objeto da Perícia:</strong> ${report.objetoPericia}</p>
-          <p><strong>Análise Técnica:</strong> ${report.analiseTecnica}</p>
+          <p><strong>Análise Técnica:</strong> ${analiseTecnica}</p>
           <p><strong>Método Utilizado:</strong> ${report.metodoUtilizado}</p>
           <p><strong>Destinatário:</strong> ${report.destinatario}</p>
           <p><strong>Materiais Utilizados:</strong> ${report.materiaisUtilizados}</p>
           <p><strong>Exames Realizados:</strong> ${report.examesRealizados}</p>
           <p><strong>Considerações Técnicas Periciais:</strong> ${report.consideracoesTecnicoPericiais}</p>
-          <p><strong>Conclusão Técnica:</strong> ${report.conclusaoTecnica}</p>
+          <p><strong>Conclusão Técnica:</strong> ${conclusaoTecnica}</p>
         </div>
         <div class="section">
           ${caseDetails}
@@ -452,27 +523,44 @@ export const ReportController = {
         "examesRealizados",
         "consideracoesTecnicoPericiais",
         "conclusaoTecnica",
-        "caso",  
-        "evidencias", 
-        "assinadoDigitalmente"  
+        "caso",
+        "evidencias",
+        "assinadoDigitalmente",
       ];
   
       const updateFields: any = {};
-  
       allowedFields.forEach((field) => {
         if (req.body[field] !== undefined) {
           updateFields[field] = req.body[field];
         }
       });
   
-      const report = await Report.findByIdAndUpdate(reportId, updateFields, { new: true });
+      const report = await Report.findByIdAndUpdate(reportId, updateFields, { new: true })
+        .populate("caso")
+        .populate("evidencias")
+        .populate("vitimas")
+        .populate("laudos");
   
       if (!report) {
         res.status(404).json({ msg: "Relatório não encontrado." });
         return;
       }
   
-      res.status(200).json({ msg: "Relatório atualizado com sucesso.", report });
+      // Regenerate PDF
+      const caso = report.caso as ICase;
+      const evidencias = report.evidencias as IEvidence[];
+      const vitimas = report.vitimas as IVitima[];
+      const laudos = report.laudos as ILaudo[];
+      const htmlContent = await generatePdfContent(report, caso, evidencias, vitimas, laudos);
+      const pdfBuffer = await generatePdf(htmlContent);
+  
+      // Save PDF for debugging
+      fs.writeFileSync("debug_updated.pdf", pdfBuffer);
+      // Convert PDF to Base64
+      const pdfBase64 = pdfBuffer.toString("base64");
+      console.log("PDF atualizado salvo para debug_updated.pdf");
+  
+      res.status(200).json({ msg: "Relatório atualizado com sucesso.", report, pdf: pdfBase64 });
     } catch (err) {
       next(err);
     }

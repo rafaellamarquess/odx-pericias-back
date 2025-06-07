@@ -6,6 +6,11 @@ import mongoose, { PopulatedDoc } from "mongoose";
 import puppeteer from "puppeteer-core";
 import chromium from "@sparticuz/chromium";
 import moment from "moment";
+import { OpenAI } from "openai";
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 type PopulatedLaudo = ILaudo & {
   evidencias: PopulatedDoc<IEvidence>[];
@@ -18,11 +23,72 @@ async function generateLaudoPdfContent(
   perito: IUser | null
 ): Promise<string> {
   const peritoNome = perito?.nome || "N/A";
-  const evidenciasHtml = evidencias.map(
-    (e) =>
-      `<p><strong>Categoria:</strong> ${e.categoria} | <strong>Tipo:</strong> ${e.tipo}</p>`
-  ).join("");
 
+  // Preparar resumo das evidências para o LLM
+  const evidenceSummary = evidencias
+    .map(
+      (e) => `
+        Categoria: ${e.categoria}
+        Tipo: ${e.tipo}
+        Conteúdo: ${e.conteudo || "N/A"}
+        Data de Upload: ${moment(e.dataUpload).format("DD/MM/YYYY HH:mm")}
+      `
+    )
+    .join("\n");
+
+  // Inicializar analiseLesoes e conclusao com valores existentes ou placeholders
+  let analiseLesoes = laudo.analiseLesoes || "N/A";
+  let conclusao = laudo.conclusao || "N/A";
+
+  // Chamar o LLM para gerar análise de lesões e conclusão
+  try {
+    const prompt = `
+      Você é um perito forense especializado. Com base nas informações fornecidas, gere uma análise de lesões e uma conclusão para um laudo pericial. Mantenha o tom profissional, objetivo e em linguagem técnico-forense em português.
+
+      **Informações das Evidências**:
+      ${evidenceSummary}
+
+      **Tarefa**:
+      - Gere uma **Análise de Lesões** (máximo 200 palavras) descrevendo as lesões observadas com base nas evidências, incluindo possíveis causas e características.
+      - Gere uma **Conclusão** (máximo 100 palavras) resumindo os achados periciais e suas implicações.
+
+      **Formato da Resposta**:
+      {
+        "analiseLesoes": "...",
+        "conclusao": "..."
+      }
+    `;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: "Você é um perito forense." },
+        { role: "user", content: prompt },
+      ],
+      max_tokens: 500,
+      temperature: 0.7,
+    });
+
+    const llmOutput = completion.choices[0].message.content;
+    const parsedOutput = JSON.parse(llmOutput || '{}');
+    analiseLesoes = parsedOutput.analiseLesoes || analiseLesoes;
+    conclusao = parsedOutput.conclusao || conclusao;
+  } catch (error) {
+    console.error("Erro ao chamar OpenAI:", error);
+    // Fallback para valores existentes ou placeholders
+    analiseLesoes = laudo.analiseLesoes || "Análise de lesões não disponível devido a erro no LLM.";
+    conclusao = laudo.conclusao || "Conclusão não disponível devido a erro no LLM.";
+  }
+
+  // Gerar HTML para as evidências
+  const evidenciasHtml = evidencias
+    .map(
+      (e) =>
+        `<p><strong>Categoria:</strong> ${e.categoria} | <strong>Tipo:</strong> ${e.tipo}</p>`
+    )
+    .join("");
+
+  // HTML completo do laudo
   return `
     <html>
       <head>
@@ -45,8 +111,8 @@ async function generateLaudoPdfContent(
           <p><strong>Data de Criação:</strong> ${moment(laudo.dataCriacao).format("DD/MM/YYYY HH:mm")}</p>
           <p><strong>Dados Antemortem:</strong> ${laudo.dadosAntemortem}</p>
           <p><strong>Dados Postmortem:</strong> ${laudo.dadosPostmortem}</p>
-          <p><strong>Análise de Lesões:</strong> ${laudo.analiseLesoes}</p>
-          <p><strong>Conclusão:</strong> ${laudo.conclusao}</p>
+          <p><strong>Análise de Lesões:</strong> ${analiseLesoes}</p>
+          <p><strong>Conclusão:</strong> ${conclusao}</p>
           <p><strong>Assinatura Digital:</strong> ${laudo.assinaturaDigital || "N/A"}</p>
         </div>
       </body>
