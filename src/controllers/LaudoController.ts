@@ -171,16 +171,37 @@ async function generatePdf(htmlContent: string): Promise<Buffer> {
 const LaudoController = {
   async createLaudo(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      console.log("Recebido req.body:", req.body); // Depuração
+
       const { vitima, perito, dadosAntemortem, dadosPostmortem } = req.body;
 
-      if (!vitima || !perito || !dadosAntemortem || !dadosPostmortem) {
-        res.status(400).json({ msg: "Todos os campos obrigatórios devem ser preenchidos." });
+      // Validação detalhada
+      if (!vitima) {
+        res.status(400).json({ msg: "Campo 'vitima' é obrigatório." });
+        return;
+      }
+      if (!perito) {
+        res.status(400).json({ msg: "Campo 'perito' é obrigatório." });
+        return;
+      }
+      if (!dadosAntemortem) {
+        res.status(400).json({ msg: "Campo 'dadosAntemortem' é obrigatório." });
+        return;
+      }
+      if (!dadosPostmortem) {
+        res.status(400).json({ msg: "Campo 'dadosPostmortem' é obrigatório." });
+        return;
+      }
+
+      // Verificar se vitima é um ObjectId válido
+      if (!mongoose.Types.ObjectId.isValid(vitima)) {
+        res.status(400).json({ msg: "ID da vítima inválido." });
         return;
       }
 
       const vitimaDoc = await Vitima.findById(vitima);
       if (!vitimaDoc) {
-        res.status(404).json({ msg: "Vítima não encontrada." });
+        res.status(404).json({ msg: "Vítima não encontrada no banco de dados." });
         return;
       }
 
@@ -257,46 +278,69 @@ const LaudoController = {
         conclusao = "Conclusão não disponível.";
       }
 
-      const novoLaudo = await Laudo.create({
-        evidencias: [evidenciaDoc._id],
-        caso: casoDoc._id,
-        vitima: vitimaDoc._id,
-        perito,
-        dadosAntemortem,
-        dadosPostmortem,
-        analiseLesoes,
-        conclusao,
-      });
+      try {
+        console.log("Criando laudo com:", {
+          evidencias: [evidenciaDoc._id],
+          caso: casoDoc._id,
+          vitima: vitimaDoc._id,
+          perito,
+          dadosAntemortem,
+          dadosPostmortem,
+          analiseLesoes,
+          conclusao,
+        });
 
-      const signatureData = `${perito}-${Date.now()}`;
-      const assinaturaDigital = crypto.createHash("sha256").update(signatureData).digest("hex");
-      novoLaudo.assinaturaDigital = assinaturaDigital;
-      await novoLaudo.save();
+        const novoLaudo = await Laudo.create({
+          evidencias: [evidenciaDoc._id],
+          caso: casoDoc._id,
+          vitima: vitimaDoc._id,
+          perito,
+          dadosAntemortem,
+          dadosPostmortem,
+          analiseLesoes,
+          conclusao,
+        });
 
-      const populatedLaudo = await Laudo.findById(novoLaudo._id)
-        .populate("evidencias")
-        .populate("vitima");
+        const signatureData = `${perito}-${Date.now()}`;
+        const assinaturaDigital = crypto.createHash("sha256").update(signatureData).digest("hex");
+        novoLaudo.assinaturaDigital = assinaturaDigital;
+        await novoLaudo.save();
 
-      const htmlContent = await generateLaudoPdfContent(
-        populatedLaudo as PopulatedLaudo,
-        [evidenciaDoc],
-        vitimaDoc,
-        perito
-      );
+        const populatedLaudo = await Laudo.findById(novoLaudo._id)
+          .populate("evidencias")
+          .populate("vitima");
 
-      const pdfBuffer = await generatePdf(htmlContent);
-      fs.writeFileSync(`debug_laudo_${novoLaudo._id}.pdf`, pdfBuffer);
-      console.log(`PDF salvo para debug em debug_laudo_${novoLaudo._id}.pdf`);
+        if (!populatedLaudo) {
+          res.status(500).json({ msg: "Erro ao recuperar o laudo recém-criado." });
+          return;
+        }
 
-      const pdfBase64 = pdfBuffer.toString("base64");
+        const htmlContent = await generateLaudoPdfContent(
+          populatedLaudo as PopulatedLaudo,
+          [evidenciaDoc],
+          vitimaDoc,
+          perito
+        );
 
-      res.status(201).json({
-        msg: "Laudo criado com sucesso.",
-        laudo: populatedLaudo,
-        pdf: pdfBase64,
-      });
+        const pdfBuffer = await generatePdf(htmlContent);
+        fs.writeFileSync(`debug_laudo_${novoLaudo._id}.pdf`, pdfBuffer);
+        console.log(`PDF salvo para debug em debug_laudo_${novoLaudo._id}.pdf`);
+
+        const pdfBase64 = pdfBuffer.toString("base64");
+
+        res.status(201).json({
+          msg: "Laudo criado com sucesso.",
+          laudo: populatedLaudo,
+          pdf: pdfBase64,
+        });
+      } catch (error) {
+        console.error("Erro ao criar laudo no MongoDB:", error);
+        res.status(400).json({ msg: "Erro ao salvar o laudo no banco de dados: " + (error instanceof Error ? error.message : String(error)) });
+        return;
+      }
     } catch (err) {
-      console.error("Erro em createLaudo:", err);
+      console.error("Erro geral em createLaudo:", err);
+      res.status(500).json({ msg: "Erro interno do servidor: " + (err instanceof Error ? err.message : String(err)) });
       next(err);
     }
   },
