@@ -82,7 +82,7 @@ async function generatePdfContent(
 
   try {
     const prompt = `
-      Você é um especialista forense. Com base nas informações fornecidas, gere uma análise técnica e uma conclusão técnica para um relatório pericial. Mantenha o tom técnico-forense, profissional e objetivo,usando terminologia precisa conforme padrões brasileiros de perícia criminal.
+      Você é um perito forense especializado. Com base nas informações fornecidas, gere uma análise técnica e uma conclusão técnica para um relatório pericial. Mantenha o tom técnico-forense, profissional e objetivo,usando terminologia precisa conforme padrões brasileiros de perícia criminal.
 
       **Informações do Caso**:
       ${caseSummary}
