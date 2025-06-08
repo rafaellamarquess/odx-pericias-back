@@ -3,7 +3,7 @@ import { IEvidence } from "./EvidenceModel";
 import { IUser } from "./UserModel";
 
 interface ILaudo extends Document {
-  evidencias: Types.Array<Types.ObjectId> | IEvidence[];
+  evidencias: Array<Types.ObjectId> | IEvidence[];
   perito: Types.ObjectId | IUser;
   dadosAntemortem: string;
   dadosPostmortem: string;

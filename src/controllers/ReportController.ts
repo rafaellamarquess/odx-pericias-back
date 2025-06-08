@@ -12,14 +12,16 @@ import moment from "moment";
 import User from "../models/UserModel";
 import upload from "../middlewares/uploadMiddleware";
 import dotenv from "dotenv";
-import OpenAI from "openai";
+import { OpenAI } from "openai";
 
-dotenv.config(); 
+dotenv.config();
 
+// Initialize OpenRouter client
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.OPENROUTER_API_KEY,
+  baseURL: "https://openrouter.ai/api/v1",
 });
-// Interface para req.user (JWT middleware)
+
 interface AuthenticatedRequest extends Request {
   user?: {
     id: string;
@@ -28,16 +30,14 @@ interface AuthenticatedRequest extends Request {
   };
 }
 
-// Função para validar URL do Cloudinary
 function isValidCloudinaryURL(url: string): boolean {
   return (
     typeof url === "string" &&
     url.startsWith("https://res.cloudinary.com/") &&
-    (url.includes("/audio/") || url.includes(".mp3") || url.includes(".wav"))
-  );
+    (url.includes("/audio/") || url.includes(".mp3") || url.includes(".wav")
+  ));
 }
 
-// Função para gerar o conteúdo do relatório em HTML
 async function generatePdfContent(
   report: IReport,
   caso: ICase,
@@ -46,7 +46,7 @@ async function generatePdfContent(
   laudos: ILaudo[],
   signedBy?: string
 ): Promise<string> {
-  // Buscar o nome do responsável no modelo User
+  // Buscar nome do responsável
   let responsavelNome = "N/A";
   if (caso.responsavel) {
     try {
@@ -77,13 +77,12 @@ async function generatePdfContent(
     .map((v) => `Nome: ${v.nome || "Não identificado"}, Sexo: ${v.sexo}, Estado do Corpo: ${v.estadoCorpo}`)
     .join("\n");
 
-  // Chamar o LLM (Grok) para gerar análise técnica e conclusão
   let analiseTecnica = report.analiseTecnica || "N/A";
   let conclusaoTecnica = report.conclusaoTecnica || "N/A";
 
   try {
     const prompt = `
-      Você é um especialista forense. Com base nas informações fornecidas, gere uma análise técnica e uma conclusão técnica para um relatório pericial. Mantenha o tom profissional e objetivo.
+      Você é um especialista forense. Com base nas informações fornecidas, gere uma análise técnica e uma conclusão técnica para um relatório pericial. Mantenha o tom técnico-forense, profissional e objetivo,usando terminologia precisa conforme padrões brasileiros de perícia criminal.
 
       **Informações do Caso**:
       ${caseSummary}
@@ -106,7 +105,7 @@ async function generatePdfContent(
     `;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: process.env.LLM_MODEL || "anthropic/claude-3.5-sonnet",
       messages: [
         { role: "system", content: "Você é um assistente forense." },
         { role: "user", content: prompt },
@@ -117,10 +116,10 @@ async function generatePdfContent(
 
     const llmOutput = completion.choices[0].message.content;
     const parsedOutput = llmOutput ? JSON.parse(llmOutput) : {};
-    analiseTecnica = parsedOutput.analiseTecnica;
-    conclusaoTecnica = parsedOutput.conclusaoTecnica;
+    analiseTecnica = parsedOutput.analiseTecnica || analiseTecnica;
+    conclusaoTecnica = parsedOutput.conclusaoTecnica || conclusaoTecnica;
   } catch (error) {
-    console.error("Erro ao chamar OpenAI:", error);
+    console.error("Erro ao chamar OpenRouter:", error instanceof Error ? error.message : error);
     analiseTecnica = report.analiseTecnica || "Análise técnica não disponível.";
     conclusaoTecnica = report.conclusaoTecnica || "Conclusão técnica não disponível.";
   }
@@ -234,61 +233,60 @@ async function generatePdfContent(
 
   // HTML completo do relatório
   return `
-    <html>
-      <head>
-        <meta charset="UTF-8">
-        <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
-        <style>
-          body { font-family: 'Roboto', sans-serif; margin: 40px; color: #333; line-height: 1.6; }
-          h1 { color: #1a3c6e; text-align: center; border-bottom: 2px solid #1a3c6e; padding-bottom: 10px; }
-          h2 { color: #1a3c6e; margin-top: 20px; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
-          h3 { color: #2c5282; margin-top: 15px; }
-          h4 { color: #2c5282; margin-bottom: 10px; }
-          p { margin: 5px 0; }
-          .section { margin-bottom: 20px; padding: 15px; background-color: #f9fafb; border-radius: 8px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
-          .evidence-box, .vitima-box, .laudo-box { margin-bottom: 20px; padding: 15px; border: 1px solid #e2e8f0; border-radius: 8px; background-color: #fff; }
-          .signature-box { margin-top: 30px; padding: 15px; border-top: 2px solid #1a3c6e; text-align: center; background-color: #edf2f7; border-radius: 8px; }
-          img { margin: 10px 0; }
-          strong { color: #2d3748; }
-        </style>
-      </head>
-      <body>
-        <h1>Relatório de Perícia</h1>
-        <div class="section">
-          <h2>Informações do Relatório</h2>
-          <p><strong>Título:</strong> ${report.titulo}</p>
-          <p><strong>Descrição:</strong> ${report.descricao}</p>
-          <p><strong>Objeto da Perícia:</strong> ${report.objetoPericia}</p>
-          <p><strong>Análise Técnica:</strong> ${analiseTecnica}</p>
-          <p><strong>Método Utilizado:</strong> ${report.metodoUtilizado}</p>
-          <p><strong>Destinatário:</strong> ${report.destinatario}</p>
-          <p><strong>Materiais Utilizados:</strong> ${report.materiaisUtilizados}</p>
-          <p><strong>Exames Realizados:</strong> ${report.examesRealizados}</p>
-          <p><strong>Considerações Técnicas Periciais:</strong> ${report.consideracoesTecnicoPericiais}</p>
-          <p><strong>Conclusão Técnica:</strong> ${conclusaoTecnica}</p>
-        </div>
-        <div class="section">
-          ${caseDetails}
-        </div>
-        <div class="section">
-          <h2>Vítimas</h2>
-          ${vitimasHtml || "<p>Nenhuma vítima associada ao caso.</p>"}
-        </div>
-        <div class="section">
-          <h2>Evidências</h2>
-          ${evidenciasHtml || "<p>Nenhuma evidência associada ao caso.</p>"}
-        </div>
-        <div class="section">
-          <h2>Laudos</h2>
-          ${laudosHtml || "<p>Nenhum laudo associado ao caso.</p>"}
-        </div>
-        ${signatureSection}
-        ${audioSection}
-      </body>
-    </html>
-  `;
+  <html>
+    <head>
+      <meta charset="UTF-8">
+      <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+      <style>
+        body { font-family: 'Roboto', sans-serif; margin: 40px; color: #333; line-height: 1.6; }
+        h1 { color: #1a3c6e; text-align: center; border-bottom: 2px solid #1a3c6e; padding-bottom: 10px; }
+        h2 { color: #1a3c6e; margin-top: 20px; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+        h3 { color: #2c5282; margin-top: 15px; }
+        h4 { color: #2c5282; margin-bottom: 10px; }
+        p { margin: 5px 0; }
+        .section { margin-bottom: 20px; padding: 15px; background-color: #f9fafb; border-radius: 8px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+        .evidence-box, .vitima-box, .laudo-box { margin-bottom: 20px; padding: 15px; border: 1px solid #e2e8f0; border-radius: 8px; background-color: #fff; }
+        .signature-box { margin-top: 30px; padding: 15px; border-top: 2px solid #1a3c6e; text-align: center; background-color: #edf2f7; border-radius: 8px; }
+        img { margin: 10px 0; }
+        strong { color: #2d3748; }
+      </style>
+    </head>
+    <body>
+      <h1>Relatório de Perícia</h1>
+      <div class="section">
+        <h2>Informações do Relatório</h2>
+        <p><strong>Título:</strong> ${report.titulo}</p>
+        <p><strong>Descrição:</strong> ${report.descricao}</p>
+        <p><strong>Objeto da Perícia:</strong> ${report.objetoPericia}</p>
+        <p><strong>Análise Técnica:</strong> ${analiseTecnica}</p>
+        <p><strong>Método Utilizado:</strong> ${report.metodoUtilizado}</p>
+        <p><strong>Destinatário:</strong> ${report.destinatario}</p>
+        <p><strong>Materiais Utilizados:</strong> ${report.materiaisUtilizados}</p>
+        <p><strong>Exames Realizados:</strong> ${report.examesRealizados}</p>
+        <p><strong>Considerações Técnicas Periciais:</strong> ${report.consideracoesTecnicoPericiais}</p>
+        <p><strong>Conclusão Técnica:</strong> ${conclusaoTecnica}</p>
+      </div>
+      <div class="section">
+        ${caseDetails}
+      </div>
+      <div class="section">
+        <h2>Vítimas</h2>
+        ${vitimasHtml || "<p>Nenhuma vítima associada ao caso.</p>"}
+      </div>
+      <div class="section">
+        <h2>Evidências</h2>
+        ${evidenciasHtml || "<p>Nenhuma evidência associada ao caso.</p>"}
+      </div>
+      <div class="section">
+        <h2>Laudos</h2>
+        ${laudosHtml || "<p>Nenhum laudo associado ao caso.</p>"}
+      </div>
+      ${signatureSection}
+      ${audioSection}
+    </body>
+  </html>
+`;
 }
-
 // Função para gerar o PDF a partir do HTML
 async function generatePdf(htmlContent: string): Promise<Buffer> {
   const browser = await puppeteer.launch({
