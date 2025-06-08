@@ -2,14 +2,15 @@ import { Request, Response, NextFunction } from "express";
 import { Laudo, ILaudo } from "../models/LaudoModel";
 import { Evidence, IEvidence } from "../models/EvidenceModel";
 import { User, IUser } from "../models/UserModel";
+import { Vitima, IVitima } from "../models/VitimaModel";
 import mongoose, { PopulatedDoc } from "mongoose";
 import puppeteer from "puppeteer-core";
 import chromium from "@sparticuz/chromium";
 import moment from "moment";
 import { OpenAI } from "openai";
 import fs from "fs";
+import crypto from "crypto";
 
-// Initialize OpenRouter client (OpenAI-compatible)
 const openai = new OpenAI({
   apiKey: process.env.OPENROUTER_API_KEY,
   baseURL: "https://openrouter.ai/api/v1",
@@ -17,17 +18,24 @@ const openai = new OpenAI({
 
 type PopulatedLaudo = ILaudo & {
   evidencias: PopulatedDoc<IEvidence>[];
+  vitima: PopulatedDoc<IVitima>;
   perito: PopulatedDoc<IUser>;
 };
 
 async function generateLaudoPdfContent(
   laudo: PopulatedLaudo,
   evidencias: IEvidence[],
+  vitima: IVitima,
   perito: IUser | null
 ): Promise<string> {
   const peritoNome = perito?.nome || "N/A";
+  const vitimaInfo = `
+    Nome: ${vitima.nome || "Não identificada"}<br>
+    Sexo: ${vitima.sexo || "Indeterminado"}<br>
+    Estado do Corpo: ${vitima.estadoCorpo || "N/A"}<br>
+    Identificada: ${vitima.identificada ? "Sim" : "Não"}
+  `;
 
-  // Preparar resumo das evidências para o LLM
   const evidenceSummary = evidencias.length
     ? evidencias
         .map(
@@ -46,7 +54,10 @@ async function generateLaudoPdfContent(
 
   try {
     const prompt = `
-      Você é um perito forense especializado. Com base nas informações fornecidas, gere uma análise técnica e uma conclusão técnica para um relatório pericial. Mantenha o tom técnico-forense, profissional e objetivo,usando terminologia precisa conforme padrões brasileiros de perícia criminal.
+      Você é um perito forense especializado. Com base nas informações fornecidas, gere uma análise técnica e uma conclusão técnica para um relatório pericial. Mantenha o tom técnico-forense, profissional e objetivo, usando terminologia precisa conforme padrões brasileiros de perícia criminal.
+
+      **Informações da Vítima**:
+      ${vitimaInfo}
 
       **Informações das Evidências**:
       ${evidenceSummary}
@@ -58,8 +69,8 @@ async function generateLaudoPdfContent(
       ${laudo.dadosPostmortem || "N/A"}
 
       **Tarefa**:
-      - Gere uma **Análise de Lesões** (máximo 200 palavras) descrevendo as lesões observadas com base nas evidências ou dados postmortem, incluindo possíveis causas e características.
-      - Gere uma **Conclusão** (máximo 100 palavras) resumindo os achados periciais e suas implicações.
+      - Gere uma **Análise de Lesões** (máximo 200 palavras) descrevendo as lesões observadas com base nas evidências e dados postmortem.
+      - Gere uma **Conclusão** (máximo 100 palavras) resumindo os achados periciais.
 
       **Formato da Resposta**:
       {
@@ -83,12 +94,11 @@ async function generateLaudoPdfContent(
     analiseLesoes = parsedOutput.analiseLesoes || analiseLesoes;
     conclusao = parsedOutput.conclusao || conclusao;
   } catch (error) {
-    console.error("Erro ao chamar OpenRouter:", error instanceof Error ? error.message : error);
-    analiseLesoes = laudo.analiseLesoes || "Análise de lesões não disponível devido a erro no LLM.";
-    conclusao = laudo.conclusao || "Conclusão não disponível devido a erro no LLM.";
+    console.error("Erro ao chamar OpenAI:", error instanceof Error ? error.message : error);
+    analiseLesoes = laudo.analiseLesoes || "Análise de lesões não disponível.";
+    conclusao = laudo.conclusao || "Conclusão não disponível.";
   }
 
-  // Gerar HTML para as evidências
   const evidenciasHtml = evidencias.length
     ? evidencias
         .map(
@@ -98,7 +108,6 @@ async function generateLaudoPdfContent(
         .join("")
     : "<p>Nenhuma evidência associada.</p>";
 
-  // HTML completo do laudo
   return `
     <html>
       <head>
@@ -115,20 +124,24 @@ async function generateLaudoPdfContent(
       <body>
         <h1>Laudo Pericial</h1>
         <div class="section">
+          <h2>Informações da Vítima</h2>
+          <p>${vitimaInfo.replace(/\n/g, "<br />")}</p>
+        </div>
+        <div class="section">
           <h2>Informações do Laudo</h2>
           ${evidenciasHtml}
           <p><strong>Perito:</strong> ${peritoNome}</p>
-          <p><strong>Data de Criação:</strong> ${moment(laudo.dataCriacao).format("DD/MM/YYYY HH:mm")}</p>
+          <p><strong>Data de Criação:</strong> ${moment(laudo.dataCriacao).format("DD/MM/YYYY HH:mm:ss")}</p>
           <p><strong>Dados Antemortem:</strong> ${laudo.dadosAntemortem || "N/A"}</p>
           <p><strong>Dados Postmortem:</strong> ${laudo.dadosPostmortem || "N/A"}</p>
           <p><strong>Análise de Lesões:</strong> ${analiseLesoes}</p>
           <p><strong>Conclusão:</strong> ${conclusao}</p>
-          <p><strong>Assinatura Digital:</strong> ${laudo.assinaturaDigital || "N/A"}</p>
+          <p><strong>Assinatura Digital:</strong> ${laudo.assinaturaDigital || "Não assinada"}</p>
         </div>
       </body>
     </html>
   `;
-}
+};
 
 async function generatePdf(htmlContent: string): Promise<Buffer> {
   const browser = await puppeteer.launch({
@@ -149,30 +162,33 @@ const LaudoController = {
   async createLaudo(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const {
-        evidencias = [], // Tornar evidencias opcional
+        evidencia,
+        vitima,
         perito,
         dadosAntemortem,
         dadosPostmortem,
         analiseLesoes,
         conclusao,
-        assinaturaDigital,
       } = req.body;
 
-      if (!perito || !dadosAntemortem || !dadosPostmortem || !analiseLesoes || !conclusao) {
+      if (!vitima || !perito || !dadosAntemortem || !dadosPostmortem || !analiseLesoes || !conclusao) {
         res.status(400).json({ msg: "Todos os campos obrigatórios devem ser preenchidos." });
         return;
       }
 
-      // Validar evidências, se fornecidas
-      let evidenciasDocs: IEvidence[] = [];
-      if (evidencias.length) {
-        evidenciasDocs = await Evidence.find({ _id: { $in: evidencias } });
-        if (!evidenciasDocs.length) {
-          res.status(404).json({ msg: "Nenhuma evidência válida encontrada." });
-          return;
-        }
-        if (evidenciasDocs.length !== evidencias.length) {
-          res.status(400).json({ msg: "Uma ou mais evidências não foram encontradas." });
+      // Validar vítima
+      const vitimaDoc = await Vitima.findById(vitima);
+      if (!vitimaDoc) {
+        res.status(404).json({ msg: "Vítima não encontrada." });
+        return;
+      }
+
+      // Validar evidência, se fornecida
+      let evidenciaDoc: IEvidence | null = null;
+      if (evidencia) {
+        evidenciaDoc = await Evidence.findById(evidencia);
+        if (!evidenciaDoc) {
+          res.status(404).json({ msg: "Evidência não encontrada." });
           return;
         }
       }
@@ -184,33 +200,34 @@ const LaudoController = {
       }
 
       const novoLaudo = await Laudo.create({
-        evidencias: evidenciasDocs.map((e) => e._id), // Pode ser vazio
+        evidencias: evidenciaDoc ? [evidenciaDoc._id] : [],
+        vitima: vitimaDoc._id,
         perito,
         dadosAntemortem,
         dadosPostmortem,
         analiseLesoes,
         conclusao,
-        assinaturaDigital,
       });
 
+      const populatedLaudo = await Laudo.findById(novoLaudo._id)
+        .populate("evidencias")
+        .populate("vitima")
+        .populate("perito");
+
       const htmlContent = await generateLaudoPdfContent(
-        {
-          ...novoLaudo.toObject(),
-          evidencias: evidenciasDocs,
-          perito: peritoDoc.toObject() as IUser,
-        } as unknown as PopulatedLaudo,
-        evidenciasDocs,
+        populatedLaudo as unknown as PopulatedLaudo,
+        evidenciaDoc ? [evidenciaDoc] : [],
+        vitimaDoc,
         peritoDoc
       );
 
       const pdfBuffer = await generatePdf(htmlContent);
-      // Save PDF for debugging
       fs.writeFileSync("debug_laudo.pdf", pdfBuffer);
       console.log("PDF salvo para debug em debug_laudo.pdf");
 
       const pdfBase64 = pdfBuffer.toString("base64");
 
-      res.status(201).json({ msg: "Laudo criado com sucesso.", laudo: novoLaudo, pdf: pdfBase64 });
+      res.status(201).json({ msg: "Laudo criado com sucesso.", laudo: populatedLaudo, pdf: pdfBase64 });
     } catch (err) {
       next(err);
     }
@@ -222,11 +239,11 @@ const LaudoController = {
 
       const allowedFields = [
         "evidencias",
+        "vitima",
         "dadosAntemortem",
         "dadosPostmortem",
         "analiseLesoes",
         "conclusao",
-        "assinaturaDigital",
       ];
 
       const updateFields: Partial<ILaudo> = {};
@@ -236,7 +253,16 @@ const LaudoController = {
         }
       });
 
-      // Validar evidências, se fornecidas no update
+      // Validar vítima, se fornecida
+      if (typeof (updateFields as { vitima?: string }).vitima === "string") {
+        const vitimaDoc = await Vitima.findById((updateFields as { vitima?: string }).vitima);
+        if (!vitimaDoc) {
+          res.status(400).json({ msg: "Vítima não encontrada." });
+          return;
+        }
+      }
+
+      // Validar evidências, se fornecidas
       if (updateFields.evidencias) {
         const evidenciasDocs = await Evidence.find({ _id: { $in: updateFields.evidencias } });
         if (evidenciasDocs.length !== updateFields.evidencias.length) {
@@ -248,6 +274,7 @@ const LaudoController = {
 
       const updatedLaudo = await Laudo.findByIdAndUpdate(laudoId, updateFields, { new: true })
         .populate("evidencias")
+        .populate("vitima")
         .populate("perito");
 
       if (!updatedLaudo) {
@@ -256,19 +283,61 @@ const LaudoController = {
       }
 
       const htmlContent = await generateLaudoPdfContent(
-        updatedLaudo as PopulatedLaudo,
+        updatedLaudo as unknown as PopulatedLaudo,
         updatedLaudo.evidencias as IEvidence[] || [],
+        updatedLaudo.get("vitima") as IVitima,
         updatedLaudo.perito as IUser
       );
 
       const pdfBuffer = await generatePdf(htmlContent);
-      // Save PDF for debugging
       fs.writeFileSync("debug_updated_laudo.pdf", pdfBuffer);
       console.log("PDF atualizado salvo para debug em debug_updated_laudo.pdf");
 
       const pdfBase64 = pdfBuffer.toString("base64");
 
       res.status(200).json({ msg: "Laudo atualizado com sucesso.", laudo: updatedLaudo, pdf: pdfBase64 });
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async signLaudo(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { laudoId } = req.params;
+
+      const laudo = await Laudo.findById(laudoId)
+        .populate("evidencias")
+        .populate("vitima")
+        .populate("perito");
+
+      if (!laudo) {
+        res.status(404).json({ msg: "Laudo não encontrado." });
+        return;
+      }
+
+      if (laudo.assinaturaDigital) {
+        res.status(400).json({ msg: "Laudo já está assinado digitalmente." });
+        return;
+      }
+
+      // Gerar assinatura digital (exemplo: hash baseado no perito e timestamp)
+      const signatureData = `${laudo.perito._id}-${Date.now()}`;
+      const assinaturaDigital = crypto.createHash("sha256").update(signatureData).digest("hex");
+
+      laudo.assinaturaDigital = assinaturaDigital;
+      await laudo.save();
+
+      const htmlContent = await generateLaudoPdfContent(
+        laudo as unknown as PopulatedLaudo,
+        laudo.evidencias as IEvidence[] || [],
+        laudo.get("vitima") as IVitima,
+        laudo.perito as IUser
+      );
+
+      const pdfBuffer = await generatePdf(htmlContent);
+      const pdfBase64 = pdfBuffer.toString("base64");
+
+      res.status(200).json({ msg: "Laudo assinado com sucesso.", laudo, pdf: pdfBase64 });
     } catch (err) {
       next(err);
     }
@@ -285,6 +354,7 @@ const LaudoController = {
 
       const laudos = await Laudo.find(query)
         .populate("evidencias")
+        .populate("vitima")
         .populate("perito");
 
       res.status(200).json({ laudos });
@@ -315,6 +385,7 @@ const LaudoController = {
 
       const laudo = await Laudo.findById(laudoId)
         .populate("evidencias")
+        .populate("vitima")
         .populate("perito");
 
       if (!laudo) {
@@ -323,8 +394,9 @@ const LaudoController = {
       }
 
       const htmlContent = await generateLaudoPdfContent(
-        laudo as PopulatedLaudo,
+        laudo as unknown as PopulatedLaudo,
         laudo.evidencias as IEvidence[] || [],
+        laudo.get("vitima") as IVitima,
         laudo.perito as IUser
       );
 

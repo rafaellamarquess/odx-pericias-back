@@ -14,6 +14,14 @@ router.post(
   LaudoController.createLaudo
 );
 
+// Assinar laudo
+router.post(
+  "/sign/:laudoId",
+  authenticateToken,
+  checkPermissions([Perfil.ADMIN, Perfil.PERITO]),
+  LaudoController.signLaudo
+);
+
 // Atualizar laudo
 router.put(
   "/update/:laudoId",
