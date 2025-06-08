@@ -4,7 +4,7 @@ import { IUser } from "./UserModel";
 import { IVitima } from "./VitimaModel";
 
 interface ILaudo extends Document {
-  evidencias?: Types.ObjectId | IEvidence[];
+  evidencias?: mongoose.Types.ObjectId[] | IEvidence[];
   caso?: Types.ObjectId;
   vitima: Types.ObjectId | IVitima;
   perito: Types.ObjectId | IUser;
