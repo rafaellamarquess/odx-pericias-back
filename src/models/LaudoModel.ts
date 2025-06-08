@@ -17,32 +17,16 @@ interface ILaudo extends Document {
 }
 
 const LaudoSchema = new Schema<ILaudo>({
-  evidencias: [
-    {
-      type: Schema.Types.ObjectId,
-      ref: "Evidence",
-    },
-  ],
-  caso: {
-    type: Schema.Types.ObjectId,
-    ref: "Caso",
-  },
-  vitima: {
-    type: Schema.Types.ObjectId,
-    ref: "Vitima",
-    required: true,
-  },
-  perito: {
-    type: Schema.Types.ObjectId,
-    ref: "User",
-    required: true,
-  },
-  dadosAntemortem: { type: String, required: true },
-  dadosPostmortem: { type: String, required: true },
-  analiseLesoes: { type: String, required: true },
-  conclusao: { type: String, required: true },
-  dataCriacao: { type: Date, default: Date.now },
+  evidencias: [{ type: Schema.Types.ObjectId, ref: "Evidence" }],
+  caso: { type: Schema.Types.ObjectId, ref: "Caso" },
+  vitima: { type: Schema.Types.ObjectId, ref: "Vitima", required: true },
+  perito: { type: Schema.Types.ObjectId, ref: "User", required: true },
+  dadosAntemortem: { type: String },
+  dadosPostmortem: { type: String },
+  analiseLesoes: { type: String },
+  conclusao: { type: String },
   assinaturaDigital: { type: String },
+  dataCriacao: { type: Date, default: Date.now },
 });
 
 const Laudo = mongoose.model<ILaudo>("Laudo", LaudoSchema);
