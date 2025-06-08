@@ -381,6 +381,26 @@ export const EvidenceController = {
     }
   },
 
+  async listEvidencesByCase(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { caso } = req.query;
+      const query: any = {};
+
+      if (caso) {
+        if (!mongoose.Types.ObjectId.isValid(caso as string)) {
+          res.status(400).json({ msg: "ID do caso inválido." });
+          return;
+        }
+        query.caso = caso;
+      }
+
+      const evidencias = await Evidence.find(query).lean();
+      res.status(200).json(evidencias);
+    } catch (err) {
+      next(err);
+    }
+  },
+
   async getEvidenceById(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { evidenceId } = req.params;

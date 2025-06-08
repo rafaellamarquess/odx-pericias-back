@@ -10,6 +10,7 @@ const router = express.Router();
 
 router.post("/", authenticateToken, checkPermissions([Perfil.ADMIN, Perfil.PERITO]),  upload.single("file"), EvidenceController.createEvidence);
 router.get("/", authenticateToken, checkPermissions([Perfil.ADMIN, Perfil.PERITO]), EvidenceController.listEvidences);
+router.get("/", authenticateToken, checkPermissions([Perfil.ADMIN, Perfil.PERITO]), EvidenceController.listEvidencesByCase);
 router.get("/filters",authenticateToken, checkPermissions([Perfil.ADMIN, Perfil.PERITO]), EvidenceController.getFilterOptions);
 router.put("/:evidenceId", authenticateToken, checkPermissions([Perfil.ADMIN, Perfil.PERITO]), EvidenceController.updateEvidence);
 router.get("/:evidenceId", authenticateToken, checkPermissions([Perfil.ADMIN, Perfil.PERITO]), EvidenceController.getEvidenceById);
