@@ -679,4 +679,3 @@ export const ReportController = {
 function sanitizeHtml(categoria: any) {
   throw new Error("Function not implemented.");
 }
-

@@ -1,12 +1,14 @@
 import mongoose, { Document, Schema, Types } from "mongoose";
 import { IEvidence } from "./EvidenceModel";
 import { IVitima } from "./VitimaModel";
+import { IUser } from "./UserModel";
+import { ICase } from "./CaseModel";
 
 interface ILaudo extends Document {
   evidencias?: mongoose.Types.ObjectId[] | IEvidence[];
-  caso?: Types.ObjectId;
+  caso?: Types.ObjectId | ICase;
   vitima: Types.ObjectId | IVitima;
-  perito: string
+  perito: Types.ObjectId | IUser;
   dadosAntemortem: string;
   dadosPostmortem: string;
   analiseLesoes: string;
@@ -19,7 +21,7 @@ const LaudoSchema = new Schema<ILaudo>({
   evidencias: [{ type: Schema.Types.ObjectId, ref: "Evidence" }],
   caso: { type: Schema.Types.ObjectId, ref: "Caso" },
   vitima: { type: Schema.Types.ObjectId, ref: "Vitima", required: true },
-  perito: { type: String, required: true },
+  perito: { type: Schema.Types.ObjectId, ref: "User", required: true },
   dadosAntemortem: { type: String },
   dadosPostmortem: { type: String },
   analiseLesoes: { type: String },

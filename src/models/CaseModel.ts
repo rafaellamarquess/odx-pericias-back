@@ -12,7 +12,6 @@ interface ICase extends Document {
   dataCriacao: Date;
   casoReferencia: string;
   evidencias: Types.Array<IEvidence>;
-  vitima: Types.ObjectId;
 }
 
 const CaseSchema = new Schema<ICase>({
@@ -31,8 +30,6 @@ const CaseSchema = new Schema<ICase>({
   estado: { type: String, required: true },
   casoReferencia: { type: String, required: true }, 
   evidencias: [{ type: Schema.Types.ObjectId, ref: "Evidence" }],
-  vitima: { type: Schema.Types.ObjectId, ref: "Vitima" },
-
 });
 
 // Middleware para validação ou manipulação dos dados antes de salvar
