@@ -287,12 +287,16 @@ export const EvidenceController = {
       }
   
       if (vitima) {
-        const opcoesVitima = ["identificada", "não identificada"];
-        if (!opcoesVitima.includes(vitima as string)) {
-          res.status(400).json({ msg: "Valor de vítima inválido", opcoes: opcoesVitima });
-          return;
+        if (mongoose.Types.ObjectId.isValid(vitima as string)) {
+          filtros["vitima._id"] = vitima;
+        } else {
+          const opcoesVitima = ["identificada", "não identificada"];
+          if (!opcoesVitima.includes(vitima as string)) {
+            res.status(400).json({ msg: "Valor de vítima inválido", opcoes: ["identificada", "não identificada", "ou um ObjectId válido"] });
+            return;
+          }
+          filtros["vitima.identificada"] = vitima === "identificada";
         }
-        filtros["vitima.identificada"] = vitima === "identificada";
       }
   
       if (caso) {
