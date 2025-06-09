@@ -1,4 +1,4 @@
-import { NextFunction, Response, Request } from "express";
+import { Request, Response, NextFunction } from "express";
 import mongoose from "mongoose";
 import { IEvidence, Evidence } from "../models/EvidenceModel";
 import { Case } from "../models/CaseModel";
@@ -6,8 +6,6 @@ import { Vitima } from "../models/VitimaModel";
 import { User } from "../models/UserModel";
 
 export const EvidenceController = {
-
-  // CRIAR EVIDÊNCIA
   async createEvidence(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { vitimaId, casoReferencia, tipo, categoria, coletadoPorNome, texto } = req.body;
@@ -35,28 +33,24 @@ export const EvidenceController = {
         identificada,
       } = req.body;
 
-      // Buscar usuário por nome (coletadoPorNome)
       const user = await User.findOne({ nome: coletadoPorNome });
       if (!user) {
         res.status(404).json({ msg: "Usuário coletor não encontrado pelo nome fornecido." });
         return;
       }
 
-      // Validar tipo
       const tiposValidos = ["imagem", "texto"];
       if (!tiposValidos.includes(tipo)) {
         res.status(400).json({ msg: "Tipo de evidência inválido. Use 'imagem' ou 'texto'." });
         return;
       }
 
-      // Buscar caso por casoReferencia
-      const foundCase = await Case.findOne({ casoReferencia }) as (typeof Case & { _id: mongoose.Types.ObjectId });
+      const foundCase = await Case.findOne({ casoReferencia }) as { _id: mongoose.Types.ObjectId };
       if (!foundCase) {
         res.status(404).json({ msg: "Caso não encontrado com esse código de referência." });
         return;
       }
 
-      // Verificar ou criar vítima
       let vitima;
       if (vitimaId) {
         vitima = await Vitima.findById(vitimaId);
@@ -64,7 +58,6 @@ export const EvidenceController = {
           res.status(404).json({ msg: "Vítima não encontrada." });
           return;
         }
-        // Verificar se o caso está associado à vítima
         if (vitima.caso?.toString() !== foundCase._id.toString()) {
           res.status(400).json({ msg: "O caso selecionado não está associado à vítima." });
           return;
@@ -84,7 +77,6 @@ export const EvidenceController = {
         });
       }
 
-      // Criar evidência
       let novaEvidencia: IEvidence;
       if (tipo === "imagem") {
         if (!req.file || !req.file.path) {
@@ -114,13 +106,12 @@ export const EvidenceController = {
         });
       }
 
-      // Atualizar caso com a nova evidência
       await Case.updateOne({ _id: foundCase._id }, { $push: { evidencias: novaEvidencia._id } });
 
-      // Retornar resposta com evidência populada
       const populatedEvidence = await Evidence.findById(novaEvidencia._id)
-        .populate("vitima", "nome sexo estadoCorpo")
-        .populate("coletadoPor", "nome");
+        .populate("vitima", "nome sexo estadoCorpo identificada cidade lesoes")
+        .populate("coletadoPor", "nome")
+        .populate("caso", "casoReferencia");
 
       res.status(201).json({
         msg: "Evidência cadastrada com sucesso.",
@@ -134,40 +125,16 @@ export const EvidenceController = {
     }
   },
 
-  // async getFilterOptions(req: Request, res: Response, next: NextFunction): Promise<void> {
-  //   try {
-  //     const users = await User.find({}, "nome").distinct("nome");
-  //     const cases = await Case.find({}, "casoReferencia").distinct("casoReferencia");
-  //     const vitimas = await Vitima.find();
-  //     const cidades = [...new Set(vitimas.map((v) => v.cidade).filter((c): c is string => !!c))];
-  //     const lesoes = [...new Set(vitimas.map((v) => v.lesoes).filter((l): l is string => !!l))];
-  //     const sexos = [...new Set(vitimas.map((v) => v.sexo).filter((s): s is "masculino" | "feminino" | "indeterminado" => !!s))];
-
-  //     res.status(200).json({
-  //       coletadoPor: users,
-  //       casos: cases,
-  //       cidades,
-  //       lesoes,
-  //       sexos,
-  //     });
-  //   } catch (err) {
-  //     console.error("Erro em getFilterOptions:", err);
-  //     res.status(500).json({ msg: "Erro ao buscar opções de filtro.", error: err instanceof Error ? err.message : String(err) });
-  //     next(err);
-  //   }
-  // },
-
-  // ATUALIZAR EVIDÊNCIA
   async updateEvidence(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { evidenceId } = req.params;
-  
+
       if (!mongoose.Types.ObjectId.isValid(evidenceId)) {
         res.status(400).json({ msg: "ID da evidência inválido." });
         return;
       }
-  
-      const allowedEvidenceFields = ["tipo", "categoria", "coletadoPor", "conteudo"];
+
+      const allowedEvidenceFields = ["tipo", "categoria", "coletadoPorNome", "texto"];
       const allowedVitimaFields = [
         "nome",
         "dataNascimento",
@@ -179,19 +146,18 @@ export const EvidenceController = {
         "lesoes",
         "identificada",
       ];
-  
+
       const evidenceUpdate: any = {};
       const vitimaUpdate: any = {};
 
       for (const field of allowedEvidenceFields) {
         if (req.body[field] !== undefined) {
-          evidenceUpdate[field] = req.body[field];
+          evidenceUpdate[field === "coletadoPorNome" ? "coletadoPor" : field] = req.body[field];
         }
       }
 
-      // Se coletadoPor for enviado, buscar o ID pelo nome
-      if (evidenceUpdate.coletadoPor) {
-        const user = await User.findOne({ nome: evidenceUpdate.coletadoPor });
+      if (req.body.coletadoPorNome) {
+        const user = await User.findOne({ nome: req.body.coletadoPorNome });
         if (!user) {
           res.status(404).json({ msg: "Usuário coletor não encontrado pelo nome fornecido." });
           return;
@@ -204,43 +170,67 @@ export const EvidenceController = {
           vitimaUpdate[field] = req.body[field];
         }
       }
-  
+
       if (req.file && req.file.path) {
-        evidenceUpdate.imagemURL = req.file.path;
-        vitimaUpdate.imagens = [req.file.path];
+        evidenceUpdate.imagem = req.file.path;
       }
-  
+
       const existingEvidence = await Evidence.findById(evidenceId);
       if (!existingEvidence) {
         res.status(404).json({ msg: "Evidência não encontrada." });
         return;
       }
-  
-      const updatedEvidence = await Evidence.findByIdAndUpdate(
-        evidenceId,
-        evidenceUpdate,
-        { new: true }
-      ).populate("coletadoPor", "nome");
-        
+
+      if (evidenceUpdate.tipo) {
+        const tiposValidos = ["imagem", "texto"];
+        if (!tiposValidos.includes(evidenceUpdate.tipo)) {
+          res.status(400).json({ msg: "Tipo de evidência inválido. Use 'imagem' ou 'texto'." });
+          return;
+        }
+        if (evidenceUpdate.tipo === "imagem" && !evidenceUpdate.imagem && !existingEvidence.imagem) {
+          res.status(400).json({ msg: "Imagem obrigatória para evidência do tipo imagem." });
+          return;
+        }
+        if (evidenceUpdate.tipo === "texto" && !evidenceUpdate.texto && !existingEvidence.texto) {
+          res.status(400).json({ msg: "Texto obrigatório para evidência do tipo texto." });
+          return;
+        }
+      }
+
+      const updatedEvidence = await Evidence.findByIdAndUpdate(evidenceId, evidenceUpdate, { new: true })
+        .populate("coletadoPor", "nome")
+        .populate("vitima", "nome sexo estadoCorpo identificada cidade lesoes")
+        .populate("caso", "casoReferencia");
+
       let updatedVitima = null;
       if (Object.keys(vitimaUpdate).length > 0) {
+        vitimaUpdate.idadeAproximada = vitimaUpdate.idadeAproximada
+          ? parseInt(vitimaUpdate.idadeAproximada)
+          : undefined;
+        vitimaUpdate.identificada = vitimaUpdate.identificada === "true" || vitimaUpdate.identificada === true;
         updatedVitima = await Vitima.findByIdAndUpdate(existingEvidence.vitima, vitimaUpdate, { new: true });
       }
-  
+
       res.status(200).json({
         msg: "Evidência atualizada com sucesso.",
-        updatedEvidence,
-        updatedVitima,
+        evidence: updatedEvidence,
+        vitima: updatedVitima || (await Vitima.findById(existingEvidence.vitima)),
       });
     } catch (err) {
+      console.error("Erro em updateEvidence:", err);
+      res.status(500).json({ msg: "Erro interno do servidor.", error: err instanceof Error ? err.message : String(err) });
       next(err);
     }
   },
 
-  // DELETAR EVIDÊNCIA
   async deleteEvidence(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { evidenceId } = req.params;
+
+      if (!mongoose.Types.ObjectId.isValid(evidenceId)) {
+        res.status(400).json({ msg: "ID da evidência inválido." });
+        return;
+      }
 
       const evidence = await Evidence.findById(evidenceId);
       if (!evidence) {
@@ -255,13 +245,16 @@ export const EvidenceController = {
         await Vitima.findByIdAndDelete(evidence.vitima);
       }
 
+      await Case.updateOne({ _id: evidence.caso }, { $pull: { evidencias: evidence._id } });
+
       res.status(200).json({ msg: "Evidência deletada com sucesso." });
     } catch (err) {
+      console.error("Erro em deleteEvidence:", err);
+      res.status(500).json({ msg: "Erro interno do servidor.", error: err instanceof Error ? err.message : String(err) });
       next(err);
     }
   },
 
-  // LISTAR EVIDÊNCIAS COM FILTROS
   async listEvidences(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const {
@@ -279,22 +272,22 @@ export const EvidenceController = {
         page = "1",
         limit = "10",
       } = req.query;
-  
+
       const pageNum = parseInt(page as string, 10);
       const limitNum = parseInt(limit as string, 10);
-  
+
       if (isNaN(pageNum) || pageNum < 1) {
         res.status(400).json({ msg: "Número da página inválido" });
         return;
       }
-  
+
       if (isNaN(limitNum) || limitNum < 1 || limitNum > 100) {
         res.status(400).json({ msg: "Limite por página deve ser entre 1 e 100" });
         return;
       }
-  
+
       const filtros: any = {};
-  
+
       if (categoria) filtros.categoria = { $regex: categoria as string, $options: "i" };
       if (tipo) {
         const tiposValidos = ["imagem", "texto"];
@@ -304,7 +297,7 @@ export const EvidenceController = {
         }
         filtros.tipo = tipo;
       }
-  
+
       if (sexo) {
         const sexosValidos = ["masculino", "feminino", "indeterminado"];
         if (!sexosValidos.includes(sexo as string)) {
@@ -313,7 +306,7 @@ export const EvidenceController = {
         }
         filtros["vitima.sexo"] = sexo;
       }
-  
+
       if (estadoCorpo) {
         const estadosValidos = ["inteiro", "fragmentado", "carbonizado", "putrefacto", "esqueleto"];
         if (!estadosValidos.includes(estadoCorpo as string)) {
@@ -322,33 +315,36 @@ export const EvidenceController = {
         }
         filtros["vitima.estadoCorpo"] = estadoCorpo;
       }
-  
+
       if (vitima) {
         if (mongoose.Types.ObjectId.isValid(vitima as string)) {
           filtros["vitima._id"] = vitima;
         } else {
           const opcoesVitima = ["identificada", "não identificada"];
           if (!opcoesVitima.includes(vitima as string)) {
-            res.status(400).json({ msg: "Valor de vítima inválido", opcoes: ["identificada", "não identificada", "ou um ObjectId válido"] });
+            res.status(400).json({
+              msg: "Valor de vítima inválido",
+              opcoes: ["identificada", "não identificada", "ou um ObjectId válido"],
+            });
             return;
           }
           filtros["vitima.identificada"] = vitima === "identificada";
         }
       }
-  
+
       if (caso) {
         const cases = await Case.find({ casoReferencia: { $regex: caso as string, $options: "i" } }).select("_id");
         filtros.caso = { $in: cases.map((c) => c._id) };
       }
-  
+
       if (lesoes) {
         filtros["vitima.lesoes"] = { $regex: lesoes as string, $options: "i" };
       }
-  
+
       if (cidade) {
         filtros["vitima.cidade"] = { $regex: cidade as string, $options: "i" };
       }
-  
+
       if (coletadoPor) {
         const users = await User.find({ nome: { $regex: coletadoPor as string, $options: "i" } }).select("_id");
         if (users.length === 0) {
@@ -360,7 +356,7 @@ export const EvidenceController = {
         }
         filtros.coletadoPor = { $in: users.map((user) => user._id) };
       }
-  
+
       if (dataInicio || dataFim) {
         filtros.dataUpload = {};
         if (dataInicio) {
@@ -371,7 +367,7 @@ export const EvidenceController = {
           }
           filtros.dataUpload.$gte = inicio;
         }
-  
+
         if (dataFim) {
           const fim = new Date(dataFim as string);
           if (isNaN(fim.getTime())) {
@@ -381,7 +377,7 @@ export const EvidenceController = {
           filtros.dataUpload.$lte = fim;
         }
       }
-  
+
       const [evidencias, total] = await Promise.all([
         Evidence.find(filtros)
           .populate({
@@ -390,24 +386,24 @@ export const EvidenceController = {
           })
           .populate({
             path: "vitima",
-            select: "nome sexo estadoCorpo identificada cidade lesoes imagens",
+            select: "nome sexo estadoCorpo identificada cidade lesoes",
           })
           .populate({
             path: "caso",
-            select: "casoReferencia", // Ensure casoReferencia is included
+            select: "casoReferencia",
           })
           .sort({ dataUpload: -1 })
           .skip((pageNum - 1) * limitNum)
           .limit(limitNum),
         Evidence.countDocuments(filtros),
       ]);
-  
-      // Transform response to include casoReferencia
+
       const formattedEvidencias = evidencias.map((ev) => ({
         ...ev.toObject(),
-        caso: ev.caso ? (ev.caso as any).casoReferencia : null, // Safely access casoReferencia
+        caso: ev.caso ? (ev.caso as any).casoReferencia : null,
+        coletadoPor: ev.coletadoPor ? (ev.coletadoPor as any).nome : null,
       }));
-  
+
       res.status(200).json({
         evidencias: formattedEvidencias,
         paginacao: {
@@ -418,43 +414,48 @@ export const EvidenceController = {
         },
       });
     } catch (err) {
+      console.error("Erro em listEvidences:", err);
+      res.status(500).json({ msg: "Erro interno do servidor.", error: err instanceof Error ? err.message : String(err) });
       next(err);
     }
   },
 
-  // OBTER EVIDÊNCIA POR ID
   async getEvidenceById(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { evidenceId } = req.params;
-  
+
       if (!mongoose.Types.ObjectId.isValid(evidenceId)) {
         res.status(400).json({ msg: "ID da evidência inválido." });
         return;
       }
-  
+
       const evidence = await Evidence.findById(evidenceId)
-        .populate("vitima")
+        .populate("vitima", "nome sexo estadoCorpo identificada cidade lesoes")
         .populate("coletadoPor", "nome")
         .populate("caso", "casoReferencia");
-  
+
       if (!evidence) {
         res.status(404).json({ msg: "Evidência não encontrada." });
         return;
       }
-  
-      res.status(200).json(evidence);
+
+      const formattedEvidence = {
+        ...evidence.toObject(),
+        caso: evidence.caso ? (evidence.caso as any).casoReferencia : null,
+        coletadoPor: evidence.coletadoPor ? (evidence.coletadoPor as any).nome : null,
+      };
+
+      res.status(200).json(formattedEvidence);
     } catch (err) {
+      console.error("Erro em getEvidenceById:", err);
+      res.status(500).json({ msg: "Erro interno do servidor.", error: err instanceof Error ? err.message : String(err) });
       next(err);
     }
   },
-  
 
-
-  // Outras opções de filtro para a página de listagem de evidências
   async getFilterOptions(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const [coletadoPor, casos, cidades, lesoes, sexos] = await Promise.all([
-
         Evidence.aggregate([
           {
             $lookup: {
@@ -468,22 +469,19 @@ export const EvidenceController = {
           { $group: { _id: "$coletadoPorDetails.nome" } },
           { $sort: { _id: 1 } },
           { $project: { value: "$_id", _id: 0 } },
-        ]).then((results) => results.map((r) => r.value)),
-
+        ]).then((results) => results.map((r) => r.value) || []),
         Case.find({})
           .select("casoReferencia")
           .sort({ casoReferencia: 1 })
-          .then((results) => results.map((r) => r.casoReferencia).filter((value) => value !== null)),
-
-          Evidence.aggregate([
+          .then((results) => results.map((r) => r.casoReferencia).filter((value) => value !== null) || []),
+        Evidence.aggregate([
           { $lookup: { from: "vitimas", localField: "vitima", foreignField: "_id", as: "vitimaDetails" } },
           { $unwind: "$vitimaDetails" },
           { $group: { _id: "$vitimaDetails.cidade" } },
           { $match: { _id: { $ne: null } } },
           { $sort: { _id: 1 } },
           { $project: { value: "$_id", _id: 0 } },
-        ]).then((results) => results.map((r) => r.value)),
-
+        ]).then((results) => results.map((r) => r.value) || []),
         Evidence.aggregate([
           { $lookup: { from: "vitimas", localField: "vitima", foreignField: "_id", as: "vitimaDetails" } },
           { $unwind: "$vitimaDetails" },
@@ -491,8 +489,7 @@ export const EvidenceController = {
           { $match: { _id: { $ne: null } } },
           { $sort: { _id: 1 } },
           { $project: { value: "$_id", _id: 0 } },
-        ]).then((results) => results.map((r) => r.value)),
-
+        ]).then((results) => results.map((r) => r.value) || []),
         Evidence.aggregate([
           { $lookup: { from: "vitimas", localField: "vitima", foreignField: "_id", as: "vitimaDetails" } },
           { $unwind: "$vitimaDetails" },
@@ -500,7 +497,7 @@ export const EvidenceController = {
           { $match: { _id: { $ne: null } } },
           { $sort: { _id: 1 } },
           { $project: { value: "$_id", _id: 0 } },
-        ]).then((results) => results.map((r) => r.value)),
+        ]).then((results) => results.map((r) => r.value) || []),
       ]);
 
       res.status(200).json({
@@ -511,6 +508,8 @@ export const EvidenceController = {
         sexos,
       });
     } catch (err) {
+      console.error("Erro em getFilterOptions:", err);
+      res.status(500).json({ msg: "Erro ao buscar opções de filtro.", error: err instanceof Error ? err.message : String(err) });
       next(err);
     }
   },
