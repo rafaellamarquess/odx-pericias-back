@@ -33,8 +33,8 @@ function isValidCloudinaryURL(url: string): boolean {
   return (
     typeof url === "string" &&
     url.startsWith("https://res.cloudinary.com/") &&
-    (url.includes("/audio/") || url.includes(".mp3") || url.includes(".wav")
-  ));
+    (url.includes("/audio/") || url.includes(".mp3") || url.includes(".wav"))
+  );
 }
 
 async function generatePdfContent(
@@ -45,8 +45,6 @@ async function generatePdfContent(
   laudos: ILaudo[],
   signedBy?: string
 ): Promise<string> {
-
-
   // Buscar nome do responsável
   let responsavelNome = "N/A";
   if (caso.responsavel) {
@@ -71,19 +69,19 @@ async function generatePdfContent(
   `;
 
   const evidenceSummary = evidencias
-    .map((e) => `Categoria: ${e.categoria}, Tipo: ${e.tipo}, Conteúdo: ${e.conteudo || "N/A"}`)
+    .map((e) => `Categoria: ${e.categoria}, Tipo: ${e.tipo}, ${e.texto ? `Texto: ${e.texto}` : e.imagem ? `Imagem: ${e.imagem}` : "Sem conteúdo"}`)
     .join("\n");
 
   const victimSummary = vitimas
     .map((v) => `Nome: ${v.nome || "Não identificado"}, Sexo: ${v.sexo}, Estado do Corpo: ${v.estadoCorpo}`)
     .join("\n");
 
-  let analiseTecnica = report.analiseTecnica || "N/A";
-  let conclusaoTecnica = report.conclusaoTecnica || "N/A";
+  let analiseTecnica = report.analiseTecnica || "";
+  let conclusaoTecnica = report.conclusaoTecnica || "";
 
   try {
     const prompt = `
-      Você é um perito forense especializado. Com base nas informações fornecidas, gere uma análise técnica e uma conclusão técnica para um relatório pericial. Mantenha o tom técnico-forense, profissional e objetivo,usando terminologia precisa conforme padrões brasileiros de perícia criminal.
+      Você é um perito forense especializado. Com base nas informações fornecidas, gere uma análise técnica e uma conclusão técnica para um relatório pericial. Mantenha o tom técnico-forense, profissional e objetivo, usando terminologia precisa conforme padrões brasileiros de perícia criminal.
 
       **Informações do Caso**:
       ${caseSummary}
@@ -140,8 +138,13 @@ async function generatePdfContent(
 
   // Seção de vítimas
   const vitimasHtml = vitimas
-    .map(
-      (v: IVitima) => `
+    .map((v: IVitima) => {
+      // Fetch images from evidence associated with this victim
+      const imageEvidences = evidencias.filter(
+        (e) => e.tipo === "imagem" && e.imagem && e.vitima.toString() === v._id.toString()
+      );
+
+      return `
         <div class="vitima-box">
           <h4>Vítima: ${v.nome || "Não identificado"}</h4>
           <p><strong>Sexo:</strong> ${v.sexo}</p>
@@ -155,19 +158,19 @@ async function generatePdfContent(
           <p><strong>Lesões:</strong> ${v.lesoes || "N/A"}</p>
           <p><strong>Identificada:</strong> ${v.identificada ? "Sim" : "Não"}</p>
           ${
-            v.imagens && v.imagens.length > 0
-              ? v.imagens
+            imageEvidences.length > 0
+              ? imageEvidences
                   .map(
-                    (img) => `
-                      <img src="${img}" style="max-width: 200px; border: 1px solid #ddd; border-radius: 4px; margin: 5px;" />
+                    (e: IEvidence) => `
+                      <img src="${e.imagem}" style="max-width: 200px; border: 1px solid #ddd; border-radius: 4px; margin: 5px;" />
                     `
                   )
                   .join("")
               : "<p><strong>Imagens:</strong> Nenhuma imagem disponível</p>"
           }
         </div>
-      `
-    )
+      `;
+    })
     .join("");
 
   // Seção de evidências
@@ -181,7 +184,7 @@ async function generatePdfContent(
       return `
         <div class="evidence-box">
           <h4>Evidência: ${e.categoria} (${e.tipo})</h4>
-          <p><strong>Conteúdo:</strong> ${e.conteudo || "N/A"}</p>
+          <p><strong>Conteúdo:</strong> ${e.texto || (e.imagem ? `<img src="${e.imagem}" style="max-width: 100px;" />` : "N/A")}</p>
           <p><strong>Data de Upload:</strong> ${moment(e.dataUpload).format("DD/MM/YYYY HH:mm")}</p>
           <p><strong>Vítima:</strong> ${vitimaNome}</p>
           <p><strong>Sexo da Vítima:</strong> ${vitimaSexo}</p>
@@ -305,7 +308,6 @@ async function generatePdf(htmlContent: string): Promise<Buffer> {
 }
 
 export const ReportController = {
-
   // CRIAR RELATÓRIO
   async createReport(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -497,10 +499,7 @@ export const ReportController = {
     }
   },
 
-
   // GESTÃO DE RELATÓRIO
-  
-  // Função para atualizar um relatório (PRECISA GERAR OUTRO RELATÓRIO EM PDF APÓS MODIFICAÇÕES)
   async updateReport(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { reportId } = req.params;
@@ -519,39 +518,39 @@ export const ReportController = {
         "evidencias",
         "assinadoDigitalmente",
       ];
-  
+
       const updateFields: any = {};
       allowedFields.forEach((field) => {
         if (req.body[field] !== undefined) {
           updateFields[field] = req.body[field];
         }
       });
-  
+
       const report = await Report.findByIdAndUpdate(reportId, updateFields, { new: true })
-        .populate("caso")
-        .populate("evidencias")
-        .populate("vitimas")
-        .populate("laudos");
-  
+        .populate<{ caso: ICase }>("caso")
+        .populate<{ evidencias: IEvidence[] }>("evidencias")
+        .populate<{ vitimas: IVitima[] }>("vitimas")
+        .populate<{ laudos: ILaudo[] }>("laudos");
+
       if (!report) {
         res.status(404).json({ msg: "Relatório não encontrado." });
         return;
       }
-  
+
       // Regenerate PDF
-      const caso = report.caso as ICase;
-      const evidencias = report.evidencias as IEvidence[];
-      const vitimas = report.vitimas as IVitima[];
-      const laudos = report.laudos as ILaudo[];
+      const caso = report.caso;
+      const evidencias = report.evidencias;
+      const vitimas = report.vitimas;
+      const laudos = report.laudos;
       const htmlContent = await generatePdfContent(report, caso, evidencias, vitimas, laudos);
       const pdfBuffer = await generatePdf(htmlContent);
-  
+
       // Save PDF for debugging
       fs.writeFileSync("debug_updated.pdf", pdfBuffer);
       // Convert PDF to Base64
       const pdfBase64 = pdfBuffer.toString("base64");
       console.log("PDF atualizado salvo para debug_updated.pdf");
-  
+
       res.status(200).json({ msg: "Relatório atualizado com sucesso.", report, pdf: pdfBase64 });
     } catch (err) {
       next(err);
@@ -561,56 +560,56 @@ export const ReportController = {
   async deleteReport(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { reportId } = req.params;
-  
+
       const report = await Report.findByIdAndDelete(reportId);
-  
+
       if (!report) {
         res.status(404).json({ msg: "Relatório não encontrado." });
         return;
       }
-  
+
       res.status(200).json({ msg: "Relatório deletado com sucesso." });
     } catch (err) {
       next(err);
     }
   },
-  
+
   async listReports(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { 
-        titulo, 
-        descricao, 
-        caso, 
-        dataInicio, 
-        dataFim, 
-        assinadoDigitalmente, 
-        page = "1", 
-        limit = "10" 
+      const {
+        titulo,
+        descricao,
+        caso,
+        dataInicio,
+        dataFim,
+        assinadoDigitalmente,
+        page = "1",
+        limit = "10",
       } = req.query;
-  
+
       const pageNum = parseInt(page as string, 10);
       const limitNum = parseInt(limit as string, 10);
-  
+
       if (isNaN(pageNum) || pageNum < 1) {
         res.status(400).json({ msg: "Número da página inválido" });
         return;
       }
-  
+
       if (isNaN(limitNum) || limitNum < 1 || limitNum > 100) {
         res.status(400).json({ msg: "Limite por página deve ser entre 1 e 100" });
         return;
       }
-  
+
       const filtros: any = {};
-  
+
       if (titulo) {
         filtros.titulo = { $regex: titulo as string, $options: "i" };
       }
-  
+
       if (descricao) {
         filtros.descricao = { $regex: descricao as string, $options: "i" };
       }
-  
+
       if (caso) {
         if (!mongoose.Types.ObjectId.isValid(caso as string)) {
           res.status(400).json({ msg: "ID do caso inválido" });
@@ -618,12 +617,12 @@ export const ReportController = {
         }
         filtros.caso = new mongoose.Types.ObjectId(caso as string);
       }
-  
+
       if (assinadoDigitalmente) {
         const assinado = assinadoDigitalmente === "true";
         filtros.assinadoDigitalmente = assinado;
       }
-  
+
       if (dataInicio || dataFim) {
         filtros.criadoEm = {};
         if (dataInicio) {
@@ -634,7 +633,7 @@ export const ReportController = {
           }
           filtros.criadoEm.$gte = inicio;
         }
-  
+
         if (dataFim) {
           const fim = new Date(dataFim as string);
           if (isNaN(fim.getTime())) {
@@ -644,17 +643,17 @@ export const ReportController = {
           filtros.criadoEm.$lte = fim;
         }
       }
-  
+
       const [relatorios, total] = await Promise.all([
         Report.find(filtros)
-          .populate("caso", "titulo descricao")
-          .populate("evidencias", "categoria tipo imagemURL conteudo")
+          .populate<{ caso: ICase }>("caso", "titulo descricao")
+          .populate<{ evidencias: IEvidence[] }>("evidencias", "categoria tipo texto imagem")
           .sort({ criadoEm: -1 })
           .skip((pageNum - 1) * limitNum)
           .limit(limitNum),
-        Report.countDocuments(filtros)
+        Report.countDocuments(filtros),
       ]);
-  
+
       res.status(200).json({
         msg: "Relatórios listados com sucesso",
         relatorios,
@@ -662,14 +661,15 @@ export const ReportController = {
           total,
           paginaAtual: pageNum,
           totalPaginas: Math.ceil(total / limitNum),
-          limitePorPagina: limitNum
-        }
+          limitePorPagina: limitNum,
+        },
       });
     } catch (err) {
       next(err);
     }
-  }
+  },
 };
+
 function sanitizeHtml(categoria: any) {
   throw new Error("Function not implemented.");
 }

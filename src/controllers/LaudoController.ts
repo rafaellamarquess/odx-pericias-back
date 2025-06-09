@@ -36,6 +36,9 @@ async function generateLaudoPdfContent(
   perito: string,
   signedBy?: string
 ): Promise<string> {
+  // Fetch images from evidence associated with the victim
+  const imageEvidences = evidencias.filter((e) => e.tipo === "imagem" && e.imagem);
+
   const vitimaInfo = `
     <p><strong>Nome:</strong> ${vitima.nome || "Não identificada"}</p>
     <p><strong>Sexo:</strong> ${vitima.sexo || "Indeterminado"}</p>
@@ -49,11 +52,11 @@ async function generateLaudoPdfContent(
     <p><strong>Lesões:</strong> ${vitima.lesoes || "N/A"}</p>
     <p><strong>Identificada:</strong> ${vitima.identificada ? "Sim" : "Não"}</p>
     ${
-      vitima.imagens && vitima.imagens.length > 0
-        ? vitima.imagens
+      imageEvidences.length > 0
+        ? imageEvidences
             .map(
-              (img) => `
-                <img src="${img}" style="max-width: 200px; border: 1px solid #ddd; border-radius: 4px; margin: 5px;" />
+              (e: IEvidence) => `
+                <img src="${e.imagem}" style="max-width: 200px; border: 1px solid #ddd; border-radius: 4px; margin: 5px;" />
               `
             )
             .join("")
@@ -79,7 +82,7 @@ async function generateLaudoPdfContent(
           (e) => `
         <div class="evidence-box">
           <h4>Evidência: ${e.categoria} (${e.tipo})</h4>
-          <p><strong>Conteúdo:</strong> ${e.conteudo || "N/A"}</p>
+          <p><strong>Conteúdo:</strong> ${e.texto || (e.imagem ? `<img src="${e.imagem}" style="max-width: 100px;" />` : "N/A")}</p>
           <p><strong>Data de Upload:</strong> ${moment(e.dataUpload).format("DD/MM/YYYY HH:mm")}</p>
           <p><strong>Coletado por:</strong> ${e.coletadoPor || "N/A"}</p>
         </div>
@@ -211,7 +214,7 @@ const LaudoController = {
             (e) => `
               Categoria: ${e.categoria}
               Tipo: ${e.tipo}
-              Conteúdo: ${e.conteudo || "N/A"}
+              ${e.texto ? `Texto: ${e.texto}` : e.imagem ? `Imagem: ${e.imagem}` : "Sem conteúdo"}
               Data de Upload: ${moment(e.dataUpload).format("DD/MM/YYYY HH:mm")}
             `
           )
@@ -335,63 +338,60 @@ const LaudoController = {
     }
   },
 
-  // ASSINAR DIGITALMENTE LAUDOS
-  // async signLaudo(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
-  //   try {
-  //     const { laudoId } = req.params;
+  async signLaudo(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { laudoId } = req.params;
 
-  //     const laudo = await Laudo.findById(laudoId)
-  //       .populate("evidencias")
-  //       .populate("vitima")
-  //       .populate("caso")
-  //       .populate("perito", "nome");
+      const laudo = await Laudo.findById(laudoId)
+        .populate<{ evidencias: IEvidence[] }>("evidencias")
+        .populate<{ vitima: IVitima }>("vitima")
+        .populate<{ caso: ICase }>("caso")
+        .populate<{ perito: IUser }>("perito", "nome");
 
-  //     if (!laudo) {
-  //       res.status(404).json({ msg: "Laudo não encontrado." });
-  //       return;
-  //     }
+      if (!laudo) {
+        res.status(404).json({ msg: "Laudo não encontrado." });
+        return;
+      }
 
-  //     if (laudo.assinaturaDigital) {
-  //       res.status(400).json({ msg: "Laudo já está assinado digitalmente." });
-  //       return;
-  //     }
+      if (laudo.assinaturaDigital) {
+        res.status(400).json({ msg: "Laudo já está assinado digitalmente." });
+        return;
+      }
 
-  //     const peritoDoc = await User.findById(laudo.perito).select("nome");
-  //     if (!peritoDoc) {
-  //       res.status(404).json({ msg: "Perito não encontrado." });
-  //       return;
-  //     }
+      const peritoDoc = await User.findById(laudo.perito).select("nome");
+      if (!peritoDoc) {
+        res.status(404).json({ msg: "Perito não encontrado." });
+        return;
+      }
 
-  //     const signatureData = `${laudo.perito}-${Date.now()}`;
-  //     const assinaturaDigital = crypto.createHash("sha256").update(signatureData).digest("hex");
-  //     laudo.assinaturaDigital = assinaturaDigital;
-  //     await laudo.save();
+      const signatureData = `${laudo.perito}-${Date.now()}`;
+      const assinaturaDigital = crypto.createHash("sha256").update(signatureData).digest("hex");
+      laudo.assinaturaDigital = assinaturaDigital;
+      await laudo.save();
 
-  //     const htmlContent = await generateLaudoPdfContent(
-  //       laudo as PopulatedLaudo,
-  //       laudo.evidencias as IEvidence[],
-  //       laudo.vitima as IVitima,
-  //       laudo.caso as ICase,
-  //       peritoDoc.nome || "N/A",
-  //       req.user?.nome || peritoDoc.nome
-  //     );
+      const htmlContent = await generateLaudoPdfContent(
+        laudo,
+        laudo.evidencias,
+        laudo.vitima,
+        laudo.caso,
+        peritoDoc.nome || "N/A",
+        req.user?.nome || peritoDoc.nome
+      );
 
-  //     const pdfBuffer = await generatePdf(htmlContent);
-  //     fs.writeFileSync(`signed_laudo_${laudoId}.pdf`, pdfBuffer);
-  //     console.log(`PDF assinado salvo para debug: signed_laudo_${laudoId}.pdf`);
+      const pdfBuffer = await generatePdf(htmlContent);
+      fs.writeFileSync(`signed_laudo_${laudoId}.pdf`, pdfBuffer);
+      console.log(`PDF assinado salvo para debug: signed_laudo_${laudoId}.pdf`);
 
-  //     const pdfBase64 = pdfBuffer.toString("base64");
+      const pdfBase64 = pdfBuffer.toString("base64");
 
-  //     res.status(200).json({ msg: "Laudo assinado com sucesso.", laudo, pdf: pdfBase64 });
-  //   } catch (err) {
-  //     console.error("Erro em signLaudo:", err);
-  //     res.status(500).json({ msg: "Erro interno do servidor.", error: err instanceof Error ? err.message : String(err) });
-  //     next(err);
-  //   }
-  // },
+      res.status(200).json({ msg: "Laudo assinado com sucesso.", laudo, pdf: pdfBase64 });
+    } catch (err) {
+      console.error("Erro em signLaudo:", err);
+      res.status(500).json({ msg: "Erro interno do servidor.", error: err instanceof Error ? err.message : String(err) });
+      next(err);
+    }
+  },
 
-
-  // ATUALIZAR LAUDOS
   async updateLaudo(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const { laudoId } = req.params;
@@ -461,10 +461,10 @@ const LaudoController = {
 
       // Atualiza
       const updatedLaudo = await Laudo.findByIdAndUpdate(laudoId, updateFields, { new: true })
-        .populate("evidencias")
-        .populate("vitima")
-        .populate("caso")
-        .populate("perito", "nome");
+        .populate<{ evidencias: IEvidence[] }>("evidencias")
+        .populate<{ vitima: IVitima }>("vitima")
+        .populate<{ caso: ICase }>("caso")
+        .populate<{ perito: IUser }>("perito", "nome");
 
       if (!updatedLaudo) {
         res.status(404).json({ msg: "Laudo não encontrado." });
@@ -474,10 +474,10 @@ const LaudoController = {
       // Gerar PDF novamente
       const peritoDoc = await User.findById(updatedLaudo.perito).select("nome");
       const htmlContent = await generateLaudoPdfContent(
-        updatedLaudo as ILaudo,
-        updatedLaudo.evidencias as IEvidence[],
-        updatedLaudo.vitima as IVitima,
-        updatedLaudo.caso as ICase,
+        updatedLaudo,
+        updatedLaudo.evidencias,
+        updatedLaudo.vitima,
+        updatedLaudo.caso,
         peritoDoc?.nome || "N/A",
         req.user?.nome || peritoDoc?.nome
       );
@@ -496,7 +496,6 @@ const LaudoController = {
     }
   },
 
-  // LISTAR LAUDOS
   async listLaudos(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const {
@@ -573,10 +572,10 @@ const LaudoController = {
 
       const [laudos, total] = await Promise.all([
         Laudo.find(query)
-          .populate("evidencias", "categoria tipo conteudo dataUpload coletadoPor")
-          .populate("vitima", "nome sexo estadoCorpo identificada")
-          .populate("caso", "titulo descricao casoReferencia")
-          .populate("perito", "nome")
+          .populate<{ evidencias: IEvidence[] }>("evidencias", "categoria tipo texto imagem dataUpload coletadoPor")
+          .populate<{ vitima: IVitima }>("vitima", "nome sexo estadoCorpo identificada")
+          .populate<{ caso: ICase }>("caso", "titulo descricao casoReferencia")
+          .populate<{ perito: IUser }>("perito", "nome")
           .sort({ dataCriacao: -1 })
           .skip((pageNum - 1) * limitNum)
           .limit(limitNum),
@@ -600,8 +599,6 @@ const LaudoController = {
     }
   },
 
-
-  // DELETAR LAUDOS
   async deleteLaudo(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { laudoId } = req.params;
