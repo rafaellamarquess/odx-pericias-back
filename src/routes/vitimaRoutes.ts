@@ -6,11 +6,6 @@ import { Perfil } from "../models/UserModel";
 
 const router = express.Router();
 
-router.get(
-  "/",
-  authenticateToken,
-  checkPermissions([Perfil.ADMIN, Perfil.PERITO]),
-  VitimaController.listVitimas
-);
+router.get( "/", authenticateToken, checkPermissions([Perfil.ADMIN, Perfil.PERITO]), VitimaController.listVitimas);
 
 export default router;

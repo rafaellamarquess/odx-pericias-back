@@ -15,13 +15,13 @@ interface IReport extends Document {
   examesRealizados: string;
   consideracoesTecnicoPericiais: string;
   conclusaoTecnica: string;
+  audioURL?: string; 
+  criadoEm: Date;
+  assinadoDigitalmente: boolean;
   caso: Types.ObjectId | ICase;
   evidencias: Types.Array<Types.ObjectId> | IEvidence[];
   vitimas: Types.Array<Types.ObjectId> | IVitima[];
   laudos: Types.Array<Types.ObjectId> | ILaudo[];
-  audioURL?: string; 
-  criadoEm: Date;
-  assinadoDigitalmente: boolean;
 }
 
 const ReportSchema = new Schema<IReport>({
@@ -35,10 +35,10 @@ const ReportSchema = new Schema<IReport>({
   examesRealizados: { type: String, required: true },
   consideracoesTecnicoPericiais: { type: String, required: true },
   conclusaoTecnica: { type: String, required: true },
+  audioURL: { type: String }, criadoEm: { type: Date, default: Date.now,}, assinadoDigitalmente: { type: Boolean, default: false },
   caso: {
     type: Schema.Types.ObjectId,
     ref: "Case",
-    required: true,
   },
   evidencias: [
     {
@@ -58,15 +58,6 @@ const ReportSchema = new Schema<IReport>({
       ref: "Laudo",
     },
   ],
-  audioURL: { type: String },
-  criadoEm: {
-    type: Date,
-    default: Date.now,
-  },
-  assinadoDigitalmente: {
-    type: Boolean,
-    default: false,
-  },
 });
 
 export const Report = mongoose.model<IReport>("Report", ReportSchema);

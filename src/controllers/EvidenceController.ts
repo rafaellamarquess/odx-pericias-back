@@ -1,29 +1,28 @@
 import { NextFunction, Response, Request } from "express";
 import mongoose from "mongoose";
-import { Evidence } from "../models/EvidenceModel";
+import { IEvidence, Evidence } from "../models/EvidenceModel";
 import { Case } from "../models/CaseModel";
 import { Vitima } from "../models/VitimaModel";
 import { User } from "../models/UserModel";
 
 export const EvidenceController = {
+
+  // CRIAR EVIDÊNCIA
   async createEvidence(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      console.log("Request Body:", req.body);
-      console.log("Request File:", req.file);
-  
-      const { vitimaId } = req.body;
-      const camposObrigatorios = ["categoria", "tipo", "coletadoPor", "casoReferencia"];
+      const { vitimaId, casoReferencia, tipo, categoria, coletadoPorNome, texto } = req.body;
+      const camposObrigatorios = ["casoReferencia", "tipo", "categoria", "coletadoPorNome"];
       if (!vitimaId) {
         camposObrigatorios.push("sexo", "estadoCorpo");
       }
-  
+
       for (const campo of camposObrigatorios) {
         if (!req.body[campo]) {
           res.status(400).json({ msg: `Campo obrigatório ausente: ${campo}` });
           return;
         }
       }
-  
+
       const {
         nome,
         dataNascimento,
@@ -34,32 +33,30 @@ export const EvidenceController = {
         estadoCorpo,
         lesoes,
         identificada,
-        categoria,
-        tipo,
-        coletadoPor,
-        conteudo,
-        casoReferencia,
       } = req.body;
 
-      const user = await User.findOne({ nome: coletadoPor });
+      // Buscar usuário por nome (coletadoPorNome)
+      const user = await User.findOne({ nome: coletadoPorNome });
       if (!user) {
         res.status(404).json({ msg: "Usuário coletor não encontrado pelo nome fornecido." });
         return;
       }
-      const coletadoPorId = user._id;
-  
+
+      // Validar tipo
       const tiposValidos = ["imagem", "texto"];
       if (!tiposValidos.includes(tipo)) {
         res.status(400).json({ msg: "Tipo de evidência inválido. Use 'imagem' ou 'texto'." });
         return;
       }
-  
-      const foundCase = await Case.findOne({ casoReferencia });
+
+      // Buscar caso por casoReferencia
+      const foundCase = await Case.findOne({ casoReferencia }) as (typeof Case & { _id: mongoose.Types.ObjectId });
       if (!foundCase) {
         res.status(404).json({ msg: "Caso não encontrado com esse código de referência." });
         return;
       }
-  
+
+      // Verificar ou criar vítima
       let vitima;
       if (vitimaId) {
         vitima = await Vitima.findById(vitimaId);
@@ -67,22 +64,28 @@ export const EvidenceController = {
           res.status(404).json({ msg: "Vítima não encontrada." });
           return;
         }
+        // Verificar se o caso está associado à vítima
+        if (vitima.caso?.toString() !== foundCase._id.toString()) {
+          res.status(400).json({ msg: "O caso selecionado não está associado à vítima." });
+          return;
+        }
       } else {
         vitima = await Vitima.create({
           nome,
           dataNascimento,
-          idadeAproximada,
+          idadeAproximada: idadeAproximada ? parseInt(idadeAproximada) : undefined,
           nacionalidade,
           cidade,
           sexo,
           estadoCorpo,
           lesoes,
-          imagens: req.file?.path ? [req.file.path] : [],
           identificada: identificada === "true" || identificada === true,
+          caso: foundCase._id,
         });
       }
 
-      let novaEvidencia;
+      // Criar evidência
+      let novaEvidencia: IEvidence;
       if (tipo === "imagem") {
         if (!req.file || !req.file.path) {
           res.status(400).json({ msg: "Arquivo de imagem não enviado." });
@@ -93,12 +96,12 @@ export const EvidenceController = {
           vitima: vitima._id,
           tipo,
           categoria,
-          coletadoPor: coletadoPorId,
-          imagemURL: req.file.path,
+          coletadoPor: user._id,
+          imagem: req.file.path,
         });
       } else {
-        if (!conteudo) {
-          res.status(400).json({ msg: "Conteúdo textual obrigatório para evidência do tipo texto." });
+        if (!texto) {
+          res.status(400).json({ msg: "Texto obrigatório para evidência do tipo texto." });
           return;
         }
         novaEvidencia = await Evidence.create({
@@ -106,23 +109,55 @@ export const EvidenceController = {
           vitima: vitima._id,
           tipo,
           categoria,
-          coletadoPor: coletadoPorId,
-          conteudo,
+          coletadoPor: user._id,
+          texto,
         });
       }
-  
+
+      // Atualizar caso com a nova evidência
       await Case.updateOne({ _id: foundCase._id }, { $push: { evidencias: novaEvidencia._id } });
-  
+
+      // Retornar resposta com evidência populada
+      const populatedEvidence = await Evidence.findById(novaEvidencia._id)
+        .populate("vitima", "nome sexo estadoCorpo")
+        .populate("coletadoPor", "nome");
+
       res.status(201).json({
-        msg: "Evidência e vítima cadastradas com sucesso.",
+        msg: "Evidência cadastrada com sucesso.",
+        evidence: populatedEvidence,
         vitima,
-        evidence: novaEvidencia,
       });
     } catch (err) {
+      console.error("Erro em createEvidence:", err);
+      res.status(500).json({ msg: "Erro interno do servidor.", error: err instanceof Error ? err.message : String(err) });
       next(err);
     }
   },
 
+  // async getFilterOptions(req: Request, res: Response, next: NextFunction): Promise<void> {
+  //   try {
+  //     const users = await User.find({}, "nome").distinct("nome");
+  //     const cases = await Case.find({}, "casoReferencia").distinct("casoReferencia");
+  //     const vitimas = await Vitima.find();
+  //     const cidades = [...new Set(vitimas.map((v) => v.cidade).filter((c): c is string => !!c))];
+  //     const lesoes = [...new Set(vitimas.map((v) => v.lesoes).filter((l): l is string => !!l))];
+  //     const sexos = [...new Set(vitimas.map((v) => v.sexo).filter((s): s is "masculino" | "feminino" | "indeterminado" => !!s))];
+
+  //     res.status(200).json({
+  //       coletadoPor: users,
+  //       casos: cases,
+  //       cidades,
+  //       lesoes,
+  //       sexos,
+  //     });
+  //   } catch (err) {
+  //     console.error("Erro em getFilterOptions:", err);
+  //     res.status(500).json({ msg: "Erro ao buscar opções de filtro.", error: err instanceof Error ? err.message : String(err) });
+  //     next(err);
+  //   }
+  // },
+
+  // ATUALIZAR EVIDÊNCIA
   async updateEvidence(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { evidenceId } = req.params;
@@ -202,6 +237,7 @@ export const EvidenceController = {
     }
   },
 
+  // DELETAR EVIDÊNCIA
   async deleteEvidence(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { evidenceId } = req.params;
@@ -225,6 +261,7 @@ export const EvidenceController = {
     }
   },
 
+  // LISTAR EVIDÊNCIAS COM FILTROS
   async listEvidences(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const {
@@ -385,6 +422,7 @@ export const EvidenceController = {
     }
   },
 
+  // OBTER EVIDÊNCIA POR ID
   async getEvidenceById(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { evidenceId } = req.params;
@@ -411,10 +449,12 @@ export const EvidenceController = {
   },
   
 
+
+  // Outras opções de filtro para a página de listagem de evidências
   async getFilterOptions(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const [coletadoPor, casos, cidades, lesoes, sexos] = await Promise.all([
-        // Get unique coletadoPor names
+
         Evidence.aggregate([
           {
             $lookup: {
@@ -429,13 +469,13 @@ export const EvidenceController = {
           { $sort: { _id: 1 } },
           { $project: { value: "$_id", _id: 0 } },
         ]).then((results) => results.map((r) => r.value)),
-        // Get all casoReferencia values from Case collection
+
         Case.find({})
           .select("casoReferencia")
           .sort({ casoReferencia: 1 })
           .then((results) => results.map((r) => r.casoReferencia).filter((value) => value !== null)),
-        // Get unique cidade values
-        Evidence.aggregate([
+
+          Evidence.aggregate([
           { $lookup: { from: "vitimas", localField: "vitima", foreignField: "_id", as: "vitimaDetails" } },
           { $unwind: "$vitimaDetails" },
           { $group: { _id: "$vitimaDetails.cidade" } },
@@ -443,7 +483,7 @@ export const EvidenceController = {
           { $sort: { _id: 1 } },
           { $project: { value: "$_id", _id: 0 } },
         ]).then((results) => results.map((r) => r.value)),
-        // Get unique lesoes values
+
         Evidence.aggregate([
           { $lookup: { from: "vitimas", localField: "vitima", foreignField: "_id", as: "vitimaDetails" } },
           { $unwind: "$vitimaDetails" },
@@ -452,7 +492,7 @@ export const EvidenceController = {
           { $sort: { _id: 1 } },
           { $project: { value: "$_id", _id: 0 } },
         ]).then((results) => results.map((r) => r.value)),
-        // Get unique sexo values
+
         Evidence.aggregate([
           { $lookup: { from: "vitimas", localField: "vitima", foreignField: "_id", as: "vitimaDetails" } },
           { $unwind: "$vitimaDetails" },

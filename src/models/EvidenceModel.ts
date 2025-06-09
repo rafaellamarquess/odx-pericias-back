@@ -6,8 +6,9 @@ interface IEvidence extends Document {
   tipo: "imagem" | "texto";
   categoria: string;
   dataUpload: Date;
-  coletadoPor: string;
-  conteudo?: string;
+  coletadoPor: mongoose.Types.ObjectId;
+  imagem?: string;
+  texto?: string;
 }
 
 const EvidenceSchema = new Schema<IEvidence>({
@@ -16,8 +17,9 @@ const EvidenceSchema = new Schema<IEvidence>({
   tipo: { type: String, enum: ["imagem", "texto"], required: true },
   categoria: { type: String, required: true },
   dataUpload: { type: Date, default: Date.now },
-  coletadoPor: { type: String, required: true },
-  conteudo: { type: String },
+  coletadoPor: { type: Schema.Types.ObjectId, ref: "User", required: true },
+  texto: { type: String },
+  imagem: { type: String },
 });
 
 const Evidence = mongoose.model<IEvidence>("Evidence", EvidenceSchema);

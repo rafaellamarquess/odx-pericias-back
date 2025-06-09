@@ -16,7 +16,6 @@ import { OpenAI } from "openai";
 
 dotenv.config();
 
-// Initialize OpenRouter client
 const openai = new OpenAI({
   apiKey: process.env.OPENROUTER_API_KEY,
   baseURL: "https://openrouter.ai/api/v1",
@@ -46,6 +45,8 @@ async function generatePdfContent(
   laudos: ILaudo[],
   signedBy?: string
 ): Promise<string> {
+
+
   // Buscar nome do responsável
   let responsavelNome = "N/A";
   if (caso.responsavel) {
@@ -287,6 +288,7 @@ async function generatePdfContent(
   </html>
 `;
 }
+
 // Função para gerar o PDF a partir do HTML
 async function generatePdf(htmlContent: string): Promise<Buffer> {
   const browser = await puppeteer.launch({
@@ -303,16 +305,8 @@ async function generatePdf(htmlContent: string): Promise<Buffer> {
 }
 
 export const ReportController = {
-  // Middleware para upload do áudio
-  uploadAudio: (req: Request, res: Response, next: NextFunction) => {
-    upload.single("audio")(req, res, (err: any) => {
-      if (err) {
-        return res.status(400).json({ msg: "Erro ao fazer upload do áudio.", error: err.message });
-      }
-      next();
-    });
-  },
 
+  // CRIAR RELATÓRIO
   async createReport(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const {

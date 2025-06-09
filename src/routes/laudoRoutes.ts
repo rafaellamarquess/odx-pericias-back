@@ -6,44 +6,12 @@ import { Perfil } from "../models/UserModel";
 
 const router = Router();
 
-// Criar laudo
-router.post(
-  "/",
-  authenticateToken,
-  checkPermissions([Perfil.ADMIN, Perfil.PERITO]),
-  LaudoController.createLaudo
-);
+router.post("/", authenticateToken, checkPermissions([Perfil.ADMIN, Perfil.PERITO]), LaudoController.createLaudo);
+// router.post("/sign/:laudoId", authenticateToken, checkPermissions([Perfil.ADMIN, Perfil.PERITO]), LaudoController.signLaudo);
 
-// Assinar laudo
-router.post(
-  "/sign/:laudoId",
-  authenticateToken,
-  checkPermissions([Perfil.ADMIN, Perfil.PERITO]),
-  LaudoController.signLaudo
-);
+router.get("/", authenticateToken, checkPermissions([Perfil.ADMIN, Perfil.PERITO]), LaudoController.listLaudos);
+router.put("/:laudoId", authenticateToken, checkPermissions([Perfil.ADMIN, Perfil.PERITO]), LaudoController.updateLaudo);
+router.delete( "/:laudoId", authenticateToken, checkPermissions([Perfil.ADMIN, Perfil.PERITO]), LaudoController.deleteLaudo);
 
-// Atualizar laudo
-router.put(
-  "/update/:laudoId",
-  authenticateToken,
-  checkPermissions([Perfil.ADMIN, Perfil.PERITO]),
-  LaudoController.updateLaudo
-);
-
-// Deletar laudo
-router.delete(
-  "/delete/:laudoId",
-  authenticateToken,
-  checkPermissions([Perfil.ADMIN, Perfil.PERITO]),
-  LaudoController.deleteLaudo
-);
-
-// Listar laudos
-router.get(
-  "/list",
-  authenticateToken,
-  checkPermissions([Perfil.ADMIN, Perfil.PERITO]),
-  LaudoController.listLaudos
-);
 
 export default router;
