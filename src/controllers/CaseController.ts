@@ -82,41 +82,50 @@ async createCase(req: CustomRequest, res: Response, next: NextFunction): Promise
 
 
   // Editar Caso
-async updateCase(req: Request, res: Response, next: NextFunction): Promise<void> {
-  try {
-    const { caseId } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(caseId)) {
-      res.status(400).json({ msg: "ID do caso inválido." });
-      return;
-    }
-    const allowedFields = [
-      "titulo",
-      "descricao",
-      "status",
-      "cidade",
-      "estado"
-    ];
-
-    const updateFields: any = {};
-
-    allowedFields.forEach((field) => {
-      if (req.body[field] !== undefined) {
-        updateFields[field] = req.body[field];
+  async updateCase(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { caseId } = req.params;
+      if (!mongoose.Types.ObjectId.isValid(caseId)) {
+        res.status(400).json({ msg: "ID do caso inválido." });
+        return;
       }
-    });
-
-    const casoAtualizado = await Case.findByIdAndUpdate(caseId, updateFields, { new: true });
-
-    if (!casoAtualizado) {
-      res.status(404).json({ msg: "Caso não encontrado." });
-      return;
+  
+      const allowedFields = ["titulo", "descricao", "status", "cidade", "estado"];
+      const updateFields: any = {};
+  
+      allowedFields.forEach((field) => {
+        if (req.body[field] !== undefined) {
+          updateFields[field] = req.body[field];
+        }
+      });
+  
+      const casoAtualizado = await Case.findByIdAndUpdate(caseId, updateFields, { new: true })
+        .populate<{ responsavel: { nome: string } }>("responsavel", "nome"); // Adicionar population
+  
+      if (!casoAtualizado) {
+        res.status(404).json({ msg: "Caso não encontrado." });
+        return;
+      }
+  
+      // Formatar a resposta para garantir consistência com listCases
+      const casoFormatado = {
+        _id: casoAtualizado._id,
+        titulo: casoAtualizado.titulo,
+        descricao: casoAtualizado.descricao,
+        status: casoAtualizado.status,
+        cidade: casoAtualizado.cidade,
+        estado: casoAtualizado.estado,
+        dataCriacao: casoAtualizado.dataCriacao,
+        casoReferencia: casoAtualizado.casoReferencia,
+        responsavel: casoAtualizado.responsavel ? casoAtualizado.responsavel.nome : null,
+      };
+  
+      res.status(200).json({ msg: "Caso atualizado com sucesso.", caso: casoFormatado });
+    } catch (err) {
+      console.error("Erro ao atualizar caso:", err);
+      next(err);
     }
-
-    res.status(200).json({ msg: "Caso atualizado com sucesso.", caso: casoAtualizado });
-  } catch (err) {
-    next(err);
-  }
-},
+  },
 
   // Deletar Caso
   async deleteCase(req: Request, res: Response, next: NextFunction): Promise<void> {
