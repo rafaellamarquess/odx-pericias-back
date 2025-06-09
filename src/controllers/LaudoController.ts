@@ -26,7 +26,7 @@ async function generateLaudoPdfContent(
   laudo: PopulatedLaudo,
   evidencias: IEvidence[],
   vitima: IVitima,
-  peritoNome: string
+  perito: string
 ): Promise<string> {
   const vitimaInfo = `
     Nome: ${vitima.nome || "Não identificada"}<br>
@@ -140,7 +140,7 @@ async function generateLaudoPdfContent(
         <div class="section">
           <h2>Informações do Laudo</h2>
           ${evidenciasHtml}
-          <p><strong>Perito:</strong> ${peritoNome}</p>
+          <p><strong>Perito:</strong> ${perito}</p>
           <p><strong>Data de Criação:</strong> ${moment(laudo.dataCriacao).format("DD/MM/YYYY HH:mm:ss")}</p>
           <p><strong>Dados Antemortem:</strong> ${laudo.dadosAntemortem || "N/A"}</p>
           <p><strong>Dados Postmortem:</strong> ${laudo.dadosPostmortem || "N/A"}</p>
