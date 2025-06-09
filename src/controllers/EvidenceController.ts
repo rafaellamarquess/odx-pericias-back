@@ -181,8 +181,12 @@ export const EvidenceController = {
         return;
       }
   
-      const updatedEvidence = await Evidence.findByIdAndUpdate(evidenceId, evidenceUpdate, { new: true });
-  
+      const updatedEvidence = await Evidence.findByIdAndUpdate(
+        evidenceId,
+        evidenceUpdate,
+        { new: true }
+      ).populate("coletadoPor", "nome");
+        
       let updatedVitima = null;
       if (Object.keys(vitimaUpdate).length > 0) {
         updatedVitima = await Vitima.findByIdAndUpdate(existingEvidence.vitima, vitimaUpdate, { new: true });
