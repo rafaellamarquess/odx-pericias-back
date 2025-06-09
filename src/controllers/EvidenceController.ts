@@ -456,20 +456,11 @@ export const EvidenceController = {
   async getFilterOptions(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const [coletadoPor, casos, cidades, lesoes, sexos] = await Promise.all([
-        Evidence.aggregate([
-          {
-            $lookup: {
-              from: "users",
-              localField: "coletadoPor",
-              foreignField: "_id",
-              as: "coletadoPorDetails",
-            },
-          },
-          { $unwind: "$coletadoPorDetails" },
-          { $group: { _id: "$coletadoPorDetails.nome" } },
-          { $sort: { _id: 1 } },
-          { $project: { value: "$_id", _id: 0 } },
-        ]).then((results) => results.map((r) => r.value) || []),
+        // Fetch all users with roles admin, perito, or assistente
+        User.find({ perfil: { $in: ["admin", "perito", "assistente"] } })
+          .select("nome")
+          .sort({ nome: 1 })
+          .then((results) => results.map((r) => r.nome).filter((value) => value !== null) || []),
         Case.find({})
           .select("casoReferencia")
           .sort({ casoReferencia: 1 })
@@ -499,7 +490,7 @@ export const EvidenceController = {
           { $project: { value: "$_id", _id: 0 } },
         ]).then((results) => results.map((r) => r.value) || []),
       ]);
-
+  
       res.status(200).json({
         coletadoPor,
         casos,
