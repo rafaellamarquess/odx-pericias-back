@@ -456,12 +456,11 @@ export const EvidenceController = {
   async getFilterOptions(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const [coletadoPor, casos, cidades, lesoes, sexos] = await Promise.all([
-        // Fetch all users with roles admin, perito, or assistente
         User.find({ perfil: { $in: ["admin", "perito", "assistente"] } })
           .select("nome")
           .sort({ nome: 1 })
-          .then((results) => results.map((r) => r.nome).filter((value) => value !== null) || []),
-        Case.find({})
+          .then((results) => results.map((r) => r.nome) || []),
+          Case.find({})
           .select("casoReferencia")
           .sort({ casoReferencia: 1 })
           .then((results) => results.map((r) => r.casoReferencia).filter((value) => value !== null) || []),
