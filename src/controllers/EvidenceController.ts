@@ -41,7 +41,6 @@ export const EvidenceController = {
         casoReferencia,
       } = req.body;
 
-      // Buscar o usuário pelo nome fornecido em coletadoPor
       const user = await User.findOne({ nome: coletadoPor });
       if (!user) {
         res.status(404).json({ msg: "Usuário coletor não encontrado pelo nome fornecido." });
@@ -49,7 +48,6 @@ export const EvidenceController = {
       }
       const coletadoPorId = user._id;
   
-      // Validar tipo
       const tiposValidos = ["imagem", "texto"];
       if (!tiposValidos.includes(tipo)) {
         res.status(400).json({ msg: "Tipo de evidência inválido. Use 'imagem' ou 'texto'." });
@@ -210,10 +208,8 @@ export const EvidenceController = {
         return;
       }
 
-      // Delete evidence
       await Evidence.findByIdAndDelete(evidenceId);
 
-      // Optionally delete victim if not referenced by other evidence
       const otherEvidences = await Evidence.find({ vitima: evidence.vitima, _id: { $ne: evidenceId } });
       if (otherEvidences.length === 0) {
         await Vitima.findByIdAndDelete(evidence.vitima);
@@ -376,26 +372,6 @@ export const EvidenceController = {
           totalPaginas: Math.ceil(total / limitNum),
         },
       });
-    } catch (err) {
-      next(err);
-    }
-  },
-
-  async listEvidencesByCase(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const { caso } = req.query;
-      const query: any = {};
-
-      if (caso) {
-        if (!mongoose.Types.ObjectId.isValid(caso as string)) {
-          res.status(400).json({ msg: "ID do caso inválido." });
-          return;
-        }
-        query.caso = caso;
-      }
-
-      const evidencias = await Evidence.find(query).lean();
-      res.status(200).json(evidencias);
     } catch (err) {
       next(err);
     }
