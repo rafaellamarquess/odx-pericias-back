@@ -456,7 +456,7 @@ export const EvidenceController = {
   async getFilterOptions(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const [coletadoPor, casos, cidades, lesoes, sexos] = await Promise.all([
-        User.find({ perfil: { $in: ["admin", "perito", "assistente"] } })
+        User.find({})
           .select("nome")
           .sort({ nome: 1 })
           .then((results) => results.map((r) => r.nome) || []),
