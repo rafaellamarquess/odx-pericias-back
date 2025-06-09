@@ -1,4 +1,3 @@
-// routes/case.routes.ts
 import { Router } from "express";
 import { CaseController } from "../controllers/CaseController";
 import { checkPermissions } from "../middlewares/permissionsMiddleware";
