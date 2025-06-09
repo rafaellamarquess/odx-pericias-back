@@ -8,8 +8,8 @@ import { User } from "../models/UserModel";
 export const EvidenceController = {
   async createEvidence(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { vitimaId, casoReferencia, tipo, categoria, coletadoPorNome, texto } = req.body;
-      const camposObrigatorios = ["casoReferencia", "tipo", "categoria", "coletadoPorNome"];
+      const { vitimaId, casoReferencia, tipo, categoria, coletadoPor, texto } = req.body;
+      const camposObrigatorios = ["casoReferencia", "tipo", "categoria", "coletadoPor"];
       if (!vitimaId) {
         camposObrigatorios.push("sexo", "estadoCorpo");
       }
@@ -33,7 +33,7 @@ export const EvidenceController = {
         identificada,
       } = req.body;
 
-      const user = await User.findOne({ nome: coletadoPorNome });
+      const user = await User.findOne({ nome: coletadoPor });
       if (!user) {
         res.status(404).json({ msg: "Usuário coletor não encontrado pelo nome fornecido." });
         return;
@@ -134,7 +134,7 @@ export const EvidenceController = {
         return;
       }
 
-      const allowedEvidenceFields = ["tipo", "categoria", "coletadoPorNome", "texto"];
+      const allowedEvidenceFields = ["tipo", "categoria", "coletadoPor", "texto"];
       const allowedVitimaFields = [
         "nome",
         "dataNascimento",
@@ -152,12 +152,12 @@ export const EvidenceController = {
 
       for (const field of allowedEvidenceFields) {
         if (req.body[field] !== undefined) {
-          evidenceUpdate[field === "coletadoPorNome" ? "coletadoPor" : field] = req.body[field];
+          evidenceUpdate[field === "coletadoPor" ? "coletadoPor" : field] = req.body[field];
         }
       }
 
-      if (req.body.coletadoPorNome) {
-        const user = await User.findOne({ nome: req.body.coletadoPorNome });
+      if (req.body.coletadoPor) {
+        const user = await User.findOne({ nome: req.body.coletadoPor });
         if (!user) {
           res.status(404).json({ msg: "Usuário coletor não encontrado pelo nome fornecido." });
           return;
