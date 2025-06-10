@@ -173,38 +173,44 @@ const LaudoController = {
         dadosAntemortem,
         dadosPostmortem,
       } = req.body;
-
+  
       // Validação dos campos obrigatórios
       if (!vitima || !caso || !perito || !evidencias || !dadosAntemortem || !dadosPostmortem) {
         res.status(400).json({ msg: "Todos os campos obrigatórios devem ser preenchidos." });
         return;
       }
-
+  
       // Verificar existência dos dados
-      const vitimaDoc = await Vitima.findById(vitima);
+      const vitimaDoc = await Vitima.findById(vitima).populate("caso");
       if (!vitimaDoc) {
         res.status(404).json({ msg: "Vítima não encontrada." });
         return;
       }
-
+  
+      // Validate that the provided case matches the victim's case
+      if (!vitimaDoc.caso || vitimaDoc.caso._id.toString() !== caso) {
+        res.status(400).json({ msg: "O caso fornecido não está associado à vítima selecionada." });
+        return;
+      }
+  
       const casoDoc = await Case.findById(caso);
       if (!casoDoc) {
         res.status(404).json({ msg: "Caso não encontrado." });
         return;
       }
-
+  
       const peritoDoc = await User.findById(perito).select("nome");
       if (!peritoDoc) {
         res.status(404).json({ msg: "Perito não encontrado." });
         return;
       }
-
+  
       const evidenciaDocs = await Evidence.find({ _id: { $in: evidencias }, vitima });
       if (evidenciaDocs.length !== evidencias.length) {
         res.status(404).json({ msg: "Uma ou mais evidências não foram encontradas ou não estão associadas à vítima." });
         return;
       }
-
+  
       // Gerar análise de lesões e conclusão com LLM
       let analiseLesoes = "";
       let conclusao = "";
@@ -227,36 +233,36 @@ const LaudoController = {
         `;
         const prompt = `
           Você é um perito forense especializado. Com base nas informações fornecidas, gere uma análise técnica e uma conclusão técnica para um laudo pericial. Mantenha o tom técnico-forense, profissional e objetivo, usando terminologia precisa conforme padrões brasileiros de perícia criminal.
-
+  
           **Informações do Caso**:
           Título: ${casoDoc.titulo}
           Descrição: ${casoDoc.descricao || "N/A"}
           Cidade: ${casoDoc.cidade || "N/A"}
           Estado: ${casoDoc.estado || "N/A"}
-
+  
           **Informações da Vítima**:
           ${vitimaInfo}
-
+  
           **Informações das Evidências**:
           ${evidenceSummary}
-
+  
           **Dados Antemortem**:
           ${dadosAntemortem || "N/A"}
-
+  
           **Dados Postmortem**:
           ${dadosPostmortem || "N/A"}
-
+  
           **Tarefa**:
           - Gere uma **Análise de Lesões** (máximo 200 palavras) descrevendo as lesões observadas com base nas evidências e dados postmortem.
           - Gere uma **Conclusão** (máximo 100 palavras) resumindo os achados periciais.
-
+  
           **Formato da Resposta**:
           {
             "analiseLesoes": "...",
             "conclusao": "..."
           }
         `;
-
+  
         const completion = await openai.chat.completions.create({
           model: process.env.LLM_MODEL || "anthropic/claude-3.5-sonnet",
           messages: [
@@ -266,7 +272,7 @@ const LaudoController = {
           max_tokens: 500,
           temperature: 0.7,
         });
-
+  
         const llmOutput = completion.choices[0].message.content;
         const parsedOutput = JSON.parse(llmOutput || "{}");
         analiseLesoes = parsedOutput.analiseLesoes || "Análise de lesões não disponível.";
@@ -276,7 +282,7 @@ const LaudoController = {
         analiseLesoes = "Análise de lesões não disponível devido a erro na IA.";
         conclusao = "Conclusão não disponível devido a erro na IA.";
       }
-
+  
       // Criar o laudo
       const novoLaudo = new Laudo({
         vitima: vitimaDoc._id,
@@ -289,27 +295,27 @@ const LaudoController = {
         conclusao,
         assinaturaDigital: null,
       });
-
+  
       await novoLaudo.save();
-
+  
       // Assinar digitalmente
       const signatureData = `${peritoDoc._id}-${novoLaudo._id}-${Date.now()}`;
       const assinaturaDigital = crypto.createHash("sha256").update(signatureData).digest("hex");
       novoLaudo.assinaturaDigital = assinaturaDigital;
       await novoLaudo.save();
-
+  
       // Recuperar o laudo populado
       const populatedLaudo = await Laudo.findById(novoLaudo._id)
         .populate<{ caso: ICase }>("caso")
         .populate<{ evidencias: IEvidence[] }>("evidencias")
         .populate<{ perito: IUser }>("perito", "nome")
         .populate<{ vitima: IVitima }>("vitima");
-
+  
       if (!populatedLaudo) {
         res.status(500).json({ msg: "Erro ao recuperar o laudo recém-criado." });
         return;
       }
-
+  
       // Gerar PDF
       const htmlContent = await generateLaudoPdfContent(
         populatedLaudo,
@@ -319,13 +325,13 @@ const LaudoController = {
         peritoDoc.nome || "N/A",
         req.user?.nome || peritoDoc.nome
       );
-
+  
       const pdfBuffer = await generatePdf(htmlContent);
       fs.writeFileSync(`signed_laudo_${novoLaudo._id}.pdf`, pdfBuffer);
       console.log(`PDF salvo para debug: signed_laudo_${novoLaudo._id}.pdf`);
-
+  
       const pdfBase64 = pdfBuffer.toString("base64");
-
+  
       res.status(201).json({
         msg: "Laudo criado com sucesso.",
         laudo: populatedLaudo,
