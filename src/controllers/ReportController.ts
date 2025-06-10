@@ -173,27 +173,37 @@ async function generatePdfContent(
     })
     .join("");
 
-  // Seção de evidências
-  const evidenciasHtml = evidencias
-    .map((e: IEvidence) => {
-      const vitima = vitimas.find((v) => v._id.toString() === e.vitima.toString());
-      const vitimaNome = vitima ? vitima.nome || "Não identificado" : "N/A";
-      const vitimaSexo = vitima ? vitima.sexo : "N/A";
-      const vitimaEstadoCorpo = vitima ? vitima.estadoCorpo : "N/A";
+// Seção de evidências
+const evidenciasHtml = await Promise.all(
+  evidencias.map(async (e: IEvidence) => {
+    const vitima = vitimas.find((v) => v._id.toString() === e.vitima.toString());
+    const vitimaNome = vitima ? vitima.nome || "Não identificado" : "N/A";
+    const vitimaSexo = vitima ? vitima.sexo : "N/A";
+    const vitimaEstadoCorpo = vitima ? vitima.estadoCorpo : "N/A";
 
-      return `
-        <div class="evidence-box">
-          <h4>Evidência: ${e.categoria} (${e.tipo})</h4>
-          <p><strong>Conteúdo:</strong> ${e.texto || (e.imagem ? `<img src="${e.imagem}" style="max-width: 100px;" />` : "N/A")}</p>
-          <p><strong>Data de Upload:</strong> ${moment(e.dataUpload).format("DD/MM/YYYY HH:mm")}</p>
-          <p><strong>Vítima:</strong> ${vitimaNome}</p>
-          <p><strong>Sexo da Vítima:</strong> ${vitimaSexo}</p>
-          <p><strong>Estado do Corpo:</strong> ${vitimaEstadoCorpo}</p>
-          <p><strong>Coletado por:</strong> ${e.coletadoPor}</p>
-        </div>
-      `;
-    })
-    .join("");
+    let coletadoPorNome = "N/A";
+    if (e.coletadoPor) {
+      try {
+        const user = await User.findById(e.coletadoPor).select("nome").exec();
+        coletadoPorNome = user && user.nome ? user.nome : "Usuário não encontrado";
+      } catch (err) {
+        console.error(`Erro ao buscar nome do usuário ${e.coletadoPor}:`, err);
+      }
+    }
+
+    return `
+      <div class="evidence-box">
+        <h4>Evidência: ${e.categoria} (${e.tipo})</h4>
+        <p><strong>Conteúdo:</strong> ${e.texto || (e.imagem ? `<img src="${e.imagem}" style="max-width: 100px;" />` : "N/A")}</p>
+        <p><strong>Data de Upload:</strong> ${moment(e.dataUpload).format("DD/MM/YYYY HH:mm")}</p>
+        <p><strong>Vítima:</strong> ${vitimaNome}</p>
+        <p><strong>Sexo da Vítima:</strong> ${vitimaSexo}</p>
+        <p><strong>Estado do Corpo:</strong> ${vitimaEstadoCorpo}</p>
+        <p><strong>Coletado por:</strong> ${coletadoPorNome}</p>
+      </div>
+    `;
+  })
+).then((htmls) => htmls.join(""));
 
   // Seção de laudos
   const laudosHtml = await Promise.all(
@@ -309,117 +319,9 @@ async function generatePdf(htmlContent: string): Promise<Buffer> {
 
 export const ReportController = {
   // CRIAR RELATÓRIO
-  async createReport(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const {
-        titulo,
-        descricao,
-        objetoPericia,
-        metodoUtilizado,
-        destinatario,
-        materiaisUtilizados,
-        examesRealizados,
-        consideracoesTecnicoPericiais,
-        casoReferencia,
-        audioURL,
-      } = req.body;
-
-      // Logar os campos recebidos
-      console.log("Campos recebidos:", {
-        titulo,
-        descricao,
-        objetoPericia,
-        metodoUtilizado,
-        destinatario,
-        materiaisUtilizados,
-        examesRealizados,
-        consideracoesTecnicoPericiais,
-        casoReferencia,
-        audioURL,
-      });
-
-      // Validação dos campos obrigatórios
-      if (
-        !titulo ||
-        !descricao ||
-        !objetoPericia ||
-        !metodoUtilizado ||
-        !destinatario ||
-        !materiaisUtilizados ||
-        !examesRealizados ||
-        !consideracoesTecnicoPericiais ||
-        !casoReferencia
-      ) {
-        console.log("Campos obrigatórios faltando:", {
-          titulo: !!titulo,
-          descricao: !!descricao,
-          objetoPericia: !!objetoPericia,
-          metodoUtilizado: !!metodoUtilizado,
-          destinatario: !!destinatario,
-          materiaisUtilizados: !!materiaisUtilizados,
-          examesRealizados: !!examesRealizados,
-          consideracoesTecnicoPericiais: !!consideracoesTecnicoPericiais,
-          casoReferencia: !!casoReferencia,
-        });
-        res.status(400).json({ msg: "Todos os campos obrigatórios devem ser preenchidos." });
-        return;
-      }
-
-      // Validar se casoReferencia é um ObjectId válido
-      if (!mongoose.Types.ObjectId.isValid(casoReferencia)) {
-        console.log("casoReferencia inválido:", casoReferencia);
-        res.status(400).json({ msg: "ID do caso inválido." });
-        return;
-      }
-
-      // Validar tamanho do arquivo de áudio
-      if (req.file && req.file.size > 10 * 1024 * 1024) {
-        res.status(400).json({ msg: "O arquivo de áudio excede o tamanho máximo permitido (10MB)." });
-        return;
-      }
-
-      // Processar áudio
-      let finalAudioURL: string | undefined;
-      if (req.file) {
-        finalAudioURL = (req.file as any).path;
-      } else if (audioURL) {
-        if (!isValidCloudinaryURL(audioURL)) {
-          res.status(400).json({ msg: "URL de áudio inválida. Deve ser uma URL válida do Cloudinary." });
-          return;
-        }
-        finalAudioURL = audioURL;
-      }
-
-      // Buscar o caso
-      const caso = await Case.findById(casoReferencia);
-      if (!caso) {
-        console.log("Caso não encontrado para ID:", casoReferencia);
-        res.status(404).json({ msg: "Caso não encontrado." });
-        return;
-      }
-
-      // Buscar evidências associadas ao caso
-      const evidencias = await Evidence.find({ caso: caso._id });
-      if (!evidencias.length) {
-        res.status(404).json({ msg: "Nenhuma evidência encontrada para este caso." });
-        return;
-      }
-
-      // Buscar vítimas associadas às evidências
-      const vitimaIds = Array.from(new Set(evidencias.map((e) => e.vitima.toString())));
-      const vitimas = await Vitima.find({ _id: { $in: vitimaIds } });
-      if (!vitimas.length) {
-        res.status(404).json({ msg: "Nenhuma vítima encontrada para este caso." });
-        return;
-      }
-
-      // Buscar laudos associados às evidências
-      const evidenciaIds = evidencias.map((e) => e._id);
-      const laudos = await Laudo.find({ evidencia: { $in: evidenciaIds } });
-
-      // Gerar análise técnica e conclusão técnica usando a IA
-      const htmlContent = await generatePdfContent(
-        {
+    async createReport(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+      try {
+        const {
           titulo,
           descricao,
           objetoPericia,
@@ -428,135 +330,242 @@ export const ReportController = {
           materiaisUtilizados,
           examesRealizados,
           consideracoesTecnicoPericiais,
+          casoReferencia,
+          audioURL,
+        } = req.body;
+  
+        // Logar os campos recebidos
+        console.log("Campos recebidos:", {
+          titulo,
+          descricao,
+          objetoPericia,
+          metodoUtilizado,
+          destinatario,
+          materiaisUtilizados,
+          examesRealizados,
+          consideracoesTecnicoPericiais,
+          casoReferencia,
+          audioURL,
+        });
+  
+        // Validação dos campos obrigatórios
+        if (
+          !titulo ||
+          !descricao ||
+          !objetoPericia ||
+          !metodoUtilizado ||
+          !destinatario ||
+          !materiaisUtilizados ||
+          !examesRealizados ||
+          !consideracoesTecnicoPericiais ||
+          !casoReferencia
+        ) {
+          console.log("Campos obrigatórios faltando:", {
+            titulo: !!titulo,
+            descricao: !!descricao,
+            objetoPericia: !!objetoPericia,
+            metodoUtilizado: !!metodoUtilizado,
+            destinatario: !!destinatario,
+            materiaisUtilizados: !!materiaisUtilizados,
+            examesRealizados: !!examesRealizados,
+            consideracoesTecnicoPericiais: !!consideracoesTecnicoPericiais,
+            casoReferencia: !!casoReferencia,
+          });
+          res.status(400).json({ msg: "Todos os campos obrigatórios devem ser preenchidos." });
+          return;
+        }
+  
+        // Validar se casoReferencia é um ObjectId válido
+        if (!mongoose.Types.ObjectId.isValid(casoReferencia)) {
+          console.log("casoReferencia inválido:", casoReferencia);
+          res.status(400).json({ msg: "ID do caso inválido." });
+          return;
+        }
+  
+        // Validar tamanho do arquivo de áudio
+        if (req.file && req.file.size > 10 * 1024 * 1024) {
+          res.status(400).json({ msg: "O arquivo de áudio excede o tamanho máximo permitido (10MB)." });
+          return;
+        }
+  
+        // Processar áudio
+        let finalAudioURL: string | undefined;
+        if (req.file) {
+          finalAudioURL = (req.file as any).path;
+        } else if (audioURL) {
+          if (!isValidCloudinaryURL(audioURL)) {
+            res.status(400).json({ msg: "URL de áudio inválida. Deve ser uma URL válida do Cloudinary." });
+            return;
+          }
+          finalAudioURL = audioURL;
+        }
+  
+        // Buscar o caso
+        const caso = await Case.findById(casoReferencia);
+        if (!caso) {
+          console.log("Caso não encontrado para ID:", casoReferencia);
+          res.status(404).json({ msg: "Caso não encontrado." });
+          return;
+        }
+  
+        // Buscar evidências associadas ao caso
+        const evidencias = await Evidence.find({ caso: caso._id });
+        console.log("Evidências encontradas:", evidencias.map(e => ({ _id: e._id, categoria: e.categoria, vitima: e.vitima })));
+        if (!evidencias.length) {
+          res.status(404).json({ msg: "Nenhuma evidência encontrada para este caso." });
+          return;
+        }
+  
+        // Buscar vítimas associadas às evidências
+        const vitimaIds = Array.from(new Set(evidencias.map((e) => e.vitima.toString())));
+        const vitimas = await Vitima.find({ _id: { $in: vitimaIds } });
+        console.log("Vítimas encontradas:", vitimas.map(v => ({ _id: v._id, nome: v.nome })));
+        if (!vitimas.length) {
+          res.status(404).json({ msg: "Nenhuma vítima encontrada para este caso." });
+          return;
+        }
+  
+        // Buscar laudos associados às vítimas
+        const laudos = await Laudo.find({ vitima: { $in: vitimaIds } });
+        console.log("Laudos encontrados:", laudos.map(l => ({ _id: l._id, vitima: l.vitima, caso: l.caso })));
+  
+        // Gerar análise técnica e conclusão técnica usando a IA
+        const htmlContent = await generatePdfContent(
+          {
+            titulo,
+            descricao,
+            objetoPericia,
+            metodoUtilizado,
+            destinatario,
+            materiaisUtilizados,
+            examesRealizados,
+            consideracoesTecnicoPericiais,
+            caso: caso._id,
+            evidencias: evidencias.map((e) => e._id),
+            vitimas: vitimas.map((v) => v._id),
+            laudos: laudos.map((l) => l._id),
+            audioURL: finalAudioURL,
+            assinadoDigitalmente: false,
+          } as IReport,
+          caso,
+          evidencias,
+          vitimas,
+          laudos
+        );
+  
+        // Extrair analiseTecnica e conclusaoTecnica do conteúdo gerado
+        const report = new Report({
+          titulo,
+          descricao,
+          objetoPericia,
+          analiseTecnica: htmlContent.includes("Análise Técnica:")
+            ? htmlContent.split('<p><strong>Análise Técnica:</strong> ')[1].split('</p>')[0]
+            : "Análise técnica gerada automaticamente pela IA",
+          metodoUtilizado,
+          destinatario,
+          materiaisUtilizados,
+          examesRealizados,
+          consideracoesTecnicoPericiais,
+          conclusaoTecnica: htmlContent.includes("Conclusão Técnica:")
+            ? htmlContent.split('<p><strong>Conclusão Técnica:</strong> ')[1].split('</p>')[0]
+            : "Conclusão técnica gerada automaticamente pela IA",
           caso: caso._id,
           evidencias: evidencias.map((e) => e._id),
           vitimas: vitimas.map((v) => v._id),
           laudos: laudos.map((l) => l._id),
           audioURL: finalAudioURL,
           assinadoDigitalmente: false,
-        } as IReport,
-        caso,
-        evidencias,
-        vitimas,
-        laudos
-      );
-
-      // Extrair analiseTecnica e conclusaoTecnica do conteúdo gerado
-      const report = new Report({
-        titulo,
-        descricao,
-        objetoPericia,
-        analiseTecnica: htmlContent.includes("Análise Técnica:")
-          ? htmlContent.split('<p><strong>Análise Técnica:</strong> ')[1].split('</p>')[0]
-          : "Análise técnica gerada automaticamente pela IA",
-        metodoUtilizado,
-        destinatario,
-        materiaisUtilizados,
-        examesRealizados,
-        consideracoesTecnicoPericiais,
-        conclusaoTecnica: htmlContent.includes("Conclusão Técnica:")
-          ? htmlContent.split('<p><strong>Conclusão Técnica:</strong> ')[1].split('</p>')[0]
-          : "Conclusão técnica gerada automaticamente pela IA",
-        caso: caso._id,
-        evidencias: evidencias.map((e) => e._id),
-        vitimas: vitimas.map((v) => v._id),
-        laudos: laudos.map((l) => l._id),
-        audioURL: finalAudioURL,
-        assinadoDigitalmente: false,
-      });
-      await report.save();
-
-      // Gerar o PDF
-      const pdfBuffer = await generatePdf(htmlContent);
-      fs.writeFileSync("debug.pdf", pdfBuffer);
-      console.log("PDF salvo para debug em debug.pdf");
-
-      // Converter para base64
-      const pdfBase64 = pdfBuffer.toString("base64");
-
-      res.status(200).json({ msg: "Relatório criado com sucesso.", report, pdf: pdfBase64 });
-    } catch (error) {
-      console.error("Erro ao gerar relatório:", error);
-      const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
-      res.status(500).json({ msg: `Erro ao gerar o relatório: ${errorMessage}`, error: errorMessage });
-    }
-  },
-
-  async assinarDigitalmente(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const { reportId } = req.params;
-
-      // Buscar o relatório com as entidades relacionadas
-      const report = await Report.findById(reportId)
-        .populate<{ caso: ICase }>("caso")
-        .populate<{ evidencias: IEvidence[] }>("evidencias")
-        .populate<{ vitimas: IVitima[] }>("vitimas")
-        .populate<{ laudos: ILaudo[] }>("laudos");
-
-      if (!report) {
-        res.status(404).json({ msg: "Relatório não encontrado." });
-        return;
+        });
+        await report.save();
+  
+        // Gerar o PDF
+        const pdfBuffer = await generatePdf(htmlContent);
+        fs.writeFileSync("debug.pdf", pdfBuffer);
+        console.log("PDF salvo para debug em debug.pdf");
+  
+        // Converter para base64
+        const pdfBase64 = pdfBuffer.toString("base64");
+  
+        res.status(200).json({ msg: "Relatório criado com sucesso.", report, pdf: pdfBase64 });
+      } catch (error) {
+        console.error("Erro ao gerar relatório:", error);
+        const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
+        res.status(500).json({ msg: `Erro ao gerar o relatório: ${errorMessage}`, error: errorMessage });
       }
+    },
 
-      if (!report.caso) {
-        res.status(500).json({ msg: "Erro: Caso não foi populado corretamente." });
-        return;
-      }
-
-      // Usar as vítimas e laudos populados
-      const vitimas = report.vitimas;
-      const laudos = report.laudos;
-
-      if (!vitimas.length) {
-        res.status(404).json({ msg: "Nenhuma vítima encontrada para este caso." });
-        return;
-      }
-
-      // Buscar o nome do usuário que está assinando
-      let signedBy = "Usuário Desconhecido";
-      if (req.user?.id) {
-        const user = await User.findById(req.user.id).select("nome").exec();
-        if (user?.nome) {
-          signedBy = user.nome;
+    async assinarDigitalmente(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+      try {
+        const { reportId } = req.params;
+    
+        // Buscar o relatório com as entidades relacionadas
+        const report = await Report.findById(reportId)
+          .populate<{ caso: ICase }>("caso")
+          .populate<{ evidencias: IEvidence[] }>("evidencias")
+          .populate<{ vitimas: IVitima[] }>("vitimas");
+    
+        if (!report) {
+          res.status(404).json({ msg: "Relatório não encontrado." });
+          return;
         }
+    
+        if (!report.caso) {
+          res.status(500).json({ msg: "Erro: Caso não foi populado corretamente." });
+          return;
+        }
+    
+        // Buscar laudos associados às vítimas
+        const vitimaIds = report.vitimas.map((v: IVitima) => v._id.toString());
+        const laudos = await Laudo.find({ vitima: { $in: vitimaIds } });
+        console.log("Laudos encontrados para assinatura:", laudos.map((l) => ({ _id: l._id, vitima: l.vitima, caso: l.caso })));
+    
+        // Buscar o nome do usuário que está assinando
+        let signedBy = "N/A";
+        if (req.user?.id) {
+          const user = await User.findById(req.user.id).select("nome").exec();
+          if (user && user.nome) {
+            signedBy = user.nome;
+          }
+        }
+    
+        // Converter evidências para objeto puro
+        const plainEvidencias: IEvidence[] = report.evidencias.map((e: IEvidence) => e.toObject());
+    
+        // Gerar o conteúdo do PDF com assinatura
+        const htmlContent = await generatePdfContent(
+          report.toObject() as IReport,
+          report.caso,
+          plainEvidencias,
+          report.vitimas,
+          laudos,
+          signedBy
+        );
+        const pdfBuffer = await generatePdf(htmlContent);
+    
+        // Salvar PDF para debug
+        fs.writeFileSync("debug_signed.pdf", pdfBuffer);
+        console.log("PDF assinado salvo para debug em debug_signed.pdf");
+    
+        // Atualizar o relatório com a assinatura digital
+        report.assinadoDigitalmente = true;
+        await report.save();
+    
+        // Converter para base64
+        const pdfBase64 = pdfBuffer.toString("base64");
+    
+        res.status(200).json({
+          msg: `Relatório "${report.titulo}" assinado digitalmente.`,
+          pdf: pdfBase64,
+        });
+      } catch (error) {
+        console.error("Erro ao assinar relatório:", error);
+        const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
+        res.status(500).json({ msg: "Erro ao assinar o relatório.", error: errorMessage });
       }
+    },
 
-      // Converter evidências para objeto puro
-      const plainEvidencias: IEvidence[] = report.evidencias.map((e: IEvidence) => e.toObject());
 
-      // Gerar o conteúdo do relatório com assinatura
-      const htmlContent = await generatePdfContent(
-        report.toObject() as IReport,
-        report.caso,
-        plainEvidencias,
-        vitimas,
-        laudos,
-        signedBy
-      );
-      const pdfBuffer = await generatePdf(htmlContent);
-
-      // Salvar PDF para debug
-      fs.writeFileSync("debug_signed.pdf", pdfBuffer);
-      console.log("PDF assinado salvo para debug em debug_signed.pdf");
-
-      // Atualizar o relatório com a assinatura digital
-      report.assinadoDigitalmente = true;
-      await report.save();
-
-      // Converter para base64
-      const pdfBase64 = pdfBuffer.toString("base64");
-
-      res.status(200).json({
-        msg: `Relatório "${report.titulo}" assinado digitalmente.`,
-        pdf: pdfBase64,
-      });
-    } catch (error) {
-      console.error("Erro ao assinar relatório:", error);
-      const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
-      res.status(500).json({ msg: "Erro ao assinar o relatório.", error: errorMessage });
-    }
-  },
-
+    
   // GESTÃO DE RELATÓRIO
   async updateReport(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -576,39 +585,43 @@ export const ReportController = {
         "evidencias",
         "assinadoDigitalmente",
       ];
-
+  
       const updateFields: any = {};
       allowedFields.forEach((field) => {
         if (req.body[field] !== undefined) {
           updateFields[field] = req.body[field];
         }
       });
-
+  
       const report = await Report.findByIdAndUpdate(reportId, updateFields, { new: true })
         .populate<{ caso: ICase }>("caso")
         .populate<{ evidencias: IEvidence[] }>("evidencias")
-        .populate<{ vitimas: IVitima[] }>("vitimas")
-        .populate<{ laudos: ILaudo[] }>("laudos");
-
+        .populate<{ vitimas: IVitima[] }>("vitimas");
+  
       if (!report) {
         res.status(404).json({ msg: "Relatório não encontrado." });
         return;
       }
-
-      // Regenerate PDF
+  
+      // Buscar laudos associados às vítimas
+      const vitimaIds = report.vitimas.map((v: IVitima) => v._id.toString());
+      const laudos = await Laudo.find({ vitima: { $in: vitimaIds } });
+      console.log("Laudos encontrados para atualização:", laudos.map(l => ({ _id: l._id, vitima: l.vitima, caso: l.caso })));
+  
+      // Regenerar PDF
       const caso = report.caso;
       const evidencias = report.evidencias;
       const vitimas = report.vitimas;
-      const laudos = report.laudos;
       const htmlContent = await generatePdfContent(report, caso, evidencias, vitimas, laudos);
       const pdfBuffer = await generatePdf(htmlContent);
-
-      // Save PDF for debugging
+  
+      // Salvar PDF para debug
       fs.writeFileSync("debug_updated.pdf", pdfBuffer);
-      // Convert PDF to Base64
-      const pdfBase64 = pdfBuffer.toString("base64");
       console.log("PDF atualizado salvo para debug_updated.pdf");
-
+  
+      // Converter para base64
+      const pdfBase64 = pdfBuffer.toString("base64");
+  
       res.status(200).json({ msg: "Relatório atualizado com sucesso.", report, pdf: pdfBase64 });
     } catch (err) {
       next(err);
