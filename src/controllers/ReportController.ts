@@ -323,7 +323,7 @@ export const ReportController = {
         casoReferencia,
         audioURL,
       } = req.body;
-  
+
       // Logar os campos recebidos
       console.log("Campos recebidos:", {
         titulo,
@@ -337,7 +337,7 @@ export const ReportController = {
         casoReferencia,
         audioURL,
       });
-  
+
       // Validação dos campos obrigatórios
       if (
         !titulo ||
@@ -364,14 +364,20 @@ export const ReportController = {
         res.status(400).json({ msg: "Todos os campos obrigatórios devem ser preenchidos." });
         return;
       }
-  
+
       // Validar se casoReferencia é um ObjectId válido
       if (!mongoose.Types.ObjectId.isValid(casoReferencia)) {
         console.log("casoReferencia inválido:", casoReferencia);
         res.status(400).json({ msg: "ID do caso inválido." });
         return;
       }
-  
+
+      // Validar tamanho do arquivo de áudio
+      if (req.file && req.file.size > 10 * 1024 * 1024) {
+        res.status(400).json({ msg: "O arquivo de áudio excede o tamanho máximo permitido (10MB)." });
+        return;
+      }
+
       // Processar áudio
       let finalAudioURL: string | undefined;
       if (req.file) {
@@ -383,30 +389,22 @@ export const ReportController = {
         }
         finalAudioURL = audioURL;
       }
-  
+
       // Buscar o caso
-      console.log("Buscando caso com ID:", casoReferencia);
       const caso = await Case.findById(casoReferencia);
       if (!caso) {
         console.log("Caso não encontrado para ID:", casoReferencia);
         res.status(404).json({ msg: "Caso não encontrado." });
         return;
       }
-  
-      // Logar os dados do caso encontrado
-      console.log("Caso encontrado:", {
-        _id: caso._id,
-        titulo: caso.titulo,
-        descricao: caso.descricao,
-      });
-  
+
       // Buscar evidências associadas ao caso
       const evidencias = await Evidence.find({ caso: caso._id });
       if (!evidencias.length) {
         res.status(404).json({ msg: "Nenhuma evidência encontrada para este caso." });
         return;
       }
-  
+
       // Buscar vítimas associadas às evidências
       const vitimaIds = Array.from(new Set(evidencias.map((e) => e.vitima.toString())));
       const vitimas = await Vitima.find({ _id: { $in: vitimaIds } });
@@ -414,11 +412,11 @@ export const ReportController = {
         res.status(404).json({ msg: "Nenhuma vítima encontrada para este caso." });
         return;
       }
-  
+
       // Buscar laudos associados às evidências
       const evidenciaIds = evidencias.map((e) => e._id);
       const laudos = await Laudo.find({ evidencia: { $in: evidenciaIds } });
-  
+
       // Gerar análise técnica e conclusão técnica usando a IA
       const htmlContent = await generatePdfContent(
         {
@@ -442,7 +440,7 @@ export const ReportController = {
         vitimas,
         laudos
       );
-  
+
       // Extrair analiseTecnica e conclusaoTecnica do conteúdo gerado
       const report = new Report({
         titulo,
@@ -467,20 +465,20 @@ export const ReportController = {
         assinadoDigitalmente: false,
       });
       await report.save();
-  
+
       // Gerar o PDF
       const pdfBuffer = await generatePdf(htmlContent);
       fs.writeFileSync("debug.pdf", pdfBuffer);
       console.log("PDF salvo para debug em debug.pdf");
-  
+
       // Converter para base64
       const pdfBase64 = pdfBuffer.toString("base64");
-  
+
       res.status(200).json({ msg: "Relatório criado com sucesso.", report, pdf: pdfBase64 });
     } catch (error) {
       console.error("Erro ao gerar relatório:", error);
       const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
-      res.status(500).json({ msg: "Erro ao gerar o relatório.", error: errorMessage });
+      res.status(500).json({ msg: `Erro ao gerar o relatório: ${errorMessage}`, error: errorMessage });
     }
   },
 
