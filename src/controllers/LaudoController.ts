@@ -35,7 +35,7 @@ interface LaudoUpdateBody {
   analiseLesoes?: string;
   conclusao?: string;
   evidencias?: string[];
-  caso?: string;
+  cases?: string;
 }
 
 interface AuthenticatedRequest extends Request {
@@ -192,19 +192,19 @@ const LaudoController = {
       }
 
       // Verificar existência dos dados
-      const vitimaDoc = await Vitima.findById(vitima).populate("caso");
+      const vitimaDoc = await Vitima.findById(vitima).populate("cases");
       if (!vitimaDoc) {
         res.status(404).json({ msg: "Vítima não encontrada." });
         return;
       }
 
       // Obter caso da vítima
-      if (!vitimaDoc.caso) {
+      if (!vitimaDoc.cases) {
         res.status(400).json({ msg: "Nenhum caso associado à vítima." });
         return;
       }
 
-      const casoDoc = await Case.findById(vitimaDoc.caso);
+      const casoDoc = await Case.findById(vitimaDoc.cases);
       if (!casoDoc) {
         res.status(404).json({ msg: "Caso associado à vítima não encontrado." });
         return;
@@ -415,7 +415,7 @@ const LaudoController = {
   async updateLaudo(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const { laudoId } = req.params;
-      const { vitima, perito, dadosAntemortem, dadosPostmortem, analiseLesoes, conclusao, evidencias, caso } = req.body as LaudoUpdateBody;
+      const { vitima, perito, dadosAntemortem, dadosPostmortem, analiseLesoes, conclusao, evidencias, cases } = req.body as LaudoUpdateBody;
 
       const updateFields: Partial<ILaudo> = {};
       if (vitima) updateFields.vitima = new mongoose.Types.ObjectId(vitima);
@@ -424,7 +424,7 @@ const LaudoController = {
       if (dadosPostmortem) updateFields.dadosPostmortem = dadosPostmortem;
       if (analiseLesoes) updateFields.analiseLesoes = analiseLesoes;
       if (conclusao) updateFields.conclusao = conclusao;
-      if (caso) updateFields.caso = new mongoose.Types.ObjectId(caso);
+      if (cases) updateFields.caso = new mongoose.Types.ObjectId(cases);
 
       // Handle evidencias
       if (evidencias && Array.isArray(evidencias)) {
@@ -446,24 +446,24 @@ const LaudoController = {
         res.status(400).json({ msg: "ID do perito inválido." });
         return;
       }
-      if (caso && !mongoose.Types.ObjectId.isValid(caso)) {
+      if (cases && !mongoose.Types.ObjectId.isValid(cases)) {
         res.status(400).json({ msg: "ID do caso inválido." });
         return;
       }
 
       // Verificar existência dos documentos
       if (vitima) {
-        const vitimaDoc = await Vitima.findById(vitima).populate("caso");
+        const vitimaDoc = await Vitima.findById(vitima).populate("cases");
         if (!vitimaDoc) {
           res.status(404).json({ msg: "Vítima não encontrada." });
           return;
         }
-        if (!vitimaDoc.caso) {
+        if (!vitimaDoc.cases) {
           res.status(400).json({ msg: "Nenhum caso associado à vítima." });
           return;
         }
         // Atualizar caso automaticamente com base na vítima
-        updateFields.caso = vitimaDoc.caso._id;
+        updateFields.caso = vitimaDoc.cases as unknown as Types.ObjectId;
         // Atualizar evidências com base na vítima, se não fornecidas
         if (!evidencias) {
           const evidenciaDocs = await Evidence.find({ vitima });
@@ -477,9 +477,9 @@ const LaudoController = {
           return;
         }
       }
-      if (caso && !updateFields.vitima) {
+      if (cases && !updateFields.vitima) {
         // Se caso for fornecido sem vítima, verificar existência
-        const casoDoc = await Case.findById(caso);
+        const casoDoc = await Case.findById(cases);
         if (!casoDoc) {
           res.status(404).json({ msg: "Caso não encontrado." });
           return;
@@ -629,7 +629,7 @@ const LaudoController = {
       });
     } catch (err) {
       console.error("Erro em listLaudos:", err);
-      res.status(500).json({ msg: "Erro interno do servidor.", error: err instanceof Error ? err.message : String(err) });
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
       next(err);
     }
   },

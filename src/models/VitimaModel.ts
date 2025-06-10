@@ -11,7 +11,7 @@ interface IVitima extends Document {
   estadoCorpo: "inteiro" | "fragmentado" | "carbonizado" | "putrefacto" | "esqueleto";
   lesoes?: string;
   identificada: boolean;
-  caso?: Types.ObjectId; // Reference to Caso, if applicable
+  cases?: Types.ObjectId; // Reference to Caso, if applicable
 }
 
 const VitimaSchema = new Schema<IVitima>({
@@ -27,7 +27,9 @@ const VitimaSchema = new Schema<IVitima>({
     required: true
   },
   lesoes: { type: String },
-  identificada: { type: Boolean, default: false }
+  identificada: { type: Boolean, default: false },
+  cases: { type: Schema.Types.ObjectId, ref: "Case" },
+
 });
 
 const Vitima = mongoose.model<IVitima>("Vitima", VitimaSchema);
