@@ -13,7 +13,7 @@ interface ILaudo extends Document {
   assinaturaDigital: string | null;
   perito: Types.ObjectId | IUser;
   caso: Types.ObjectId | ICase;
-  evidencias: Types.Array<Types.ObjectId> | IEvidence[];
+  evidencias: Types.ObjectId | IEvidence[];
   vitima: Types.ObjectId | IVitima;
 }
 
