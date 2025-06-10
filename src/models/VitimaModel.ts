@@ -1,7 +1,7 @@
 import mongoose, { Document, Schema, Types } from "mongoose";
 
 interface IVitima extends Document {
-  _id: Types.ObjectId; // Explicitly define _id
+  _id: Types.ObjectId;
   nome?: string;
   dataNascimento?: Date;
   idadeAproximada?: number;
@@ -11,7 +11,7 @@ interface IVitima extends Document {
   estadoCorpo: "inteiro" | "fragmentado" | "carbonizado" | "putrefacto" | "esqueleto";
   lesoes?: string;
   identificada: boolean;
-  cases?: Types.ObjectId; // Reference to Caso, if applicable
+  cases: Types.ObjectId; 
 }
 
 const VitimaSchema = new Schema<IVitima>({
@@ -24,12 +24,11 @@ const VitimaSchema = new Schema<IVitima>({
   estadoCorpo: {
     type: String,
     enum: ["inteiro", "fragmentado", "carbonizado", "putrefacto", "esqueleto"],
-    required: true
+    required: true,
   },
   lesoes: { type: String },
   identificada: { type: Boolean, default: false },
-  cases: { type: Schema.Types.ObjectId, ref: "Case" },
-
+  cases: { type: Schema.Types.ObjectId, ref: "Case", required: true },
 });
 
 const Vitima = mongoose.model<IVitima>("Vitima", VitimaSchema);
