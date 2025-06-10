@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { Evidence } from "../models/EvidenceModel";
+import { Case } from "../models/CaseModel";
 
 export const DashboardController = {
   async filtrarCasos(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -14,8 +15,7 @@ export const DashboardController = {
           res.status(400).json({ error: "Parâmetro 'ano' inválido. Use o formato YYYY (ex.: 2025)." });
           return;
         }
-        matchStage["caso.data"] = {
-          $exists: true,
+        matchStage["caso.dataCriacao"] = {
           $gte: new Date(anoNum, 0, 1),
           $lte: new Date(anoNum, 11, 31, 23, 59, 59, 999),
         };
@@ -33,8 +33,7 @@ export const DashboardController = {
           return;
         }
         const anoNum = Number(ano);
-        matchStage["caso.data"] = {
-          $exists: true,
+        matchStage["caso.dataCriacao"] = {
           $gte: new Date(anoNum, mesNum - 1, 1),
           $lte: new Date(anoNum, mesNum, 0, 23, 59, 59, 999),
         };
@@ -46,20 +45,32 @@ export const DashboardController = {
         {
           $lookup: {
             from: "cases",
-            localField: "casoReferencia",
-            foreignField: "casoReferencia",
+            localField: "caso",
+            foreignField: "_id",
             as: "caso",
           },
         },
         {
-          $unwind: "$caso",
+          $unwind: {
+            path: "$caso",
+            preserveNullAndEmptyArrays: false, // Exclui evidências sem caso correspondente
+          },
         },
         {
           $match: matchStage,
         },
       ];
 
-      console.log("Documentos após o filtro:", await Evidence.aggregate([...basePipeline]));
+      // Logar documentos após o filtro inicial
+      const documentosFiltrados = await Evidence.aggregate([...basePipeline]);
+      console.log(
+        "Documentos após o filtro:",
+        documentosFiltrados.map(doc => ({
+          casoId: doc.caso._id,
+          cidade: doc.caso.cidade,
+          dataCriacao: doc.caso.dataCriacao,
+        }))
+      );
 
       const totalCasosPromise = Evidence.aggregate([
         ...basePipeline,
@@ -71,8 +82,8 @@ export const DashboardController = {
         {
           $group: {
             _id: {
-              ano: { $year: "$caso.data" },
-              mes: { $month: "$caso.data" },
+              ano: { $year: "$caso.dataCriacao" },
+              mes: { $month: "$caso.dataCriacao" },
             },
             quantidade: { $sum: 1 },
           },
@@ -84,7 +95,15 @@ export const DashboardController = {
               $concat: [
                 { $toString: "$_id.ano" },
                 "-",
-                { $toString: { $cond: [{ $lt: ["$_id.mes", 10] }, { $concat: ["0", { $toString: "$_id.mes" }] }, { $toString: "$_id.mes" }] } },
+                {
+                  $toString: {
+                    $cond: [
+                      { $lt: ["$_id.mes", 10] },
+                      { $concat: ["0", { $toString: "$_id.mes" }] },
+                      { $toString: "$_id.mes" },
+                    ],
+                  },
+                },
               ],
             },
             quantidade: 1,
@@ -123,6 +142,9 @@ export const DashboardController = {
       ]);
 
       const totalCasos = totalCasosResult[0]?.total || 0;
+
+      // Logar dados de cidade retornados
+      console.log("Dados de cidade agregados:", cidade);
 
       res.status(200).json({
         totalCasos,
