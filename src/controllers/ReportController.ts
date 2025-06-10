@@ -309,7 +309,6 @@ async function generatePdf(htmlContent: string): Promise<Buffer> {
 
 export const ReportController = {
   // CRIAR RELATÓRIO
-  // ReportController.ts
   async createReport(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const {
@@ -325,7 +324,21 @@ export const ReportController = {
         audioURL,
       } = req.body;
   
-      // Validação dos campos obrigatórios (removido analiseTecnica e conclusaoTecnica)
+      // Logar os campos recebidos
+      console.log("Campos recebidos:", {
+        titulo,
+        descricao,
+        objetoPericia,
+        metodoUtilizado,
+        destinatario,
+        materiaisUtilizados,
+        examesRealizados,
+        consideracoesTecnicoPericiais,
+        casoReferencia,
+        audioURL,
+      });
+  
+      // Validação dos campos obrigatórios
       if (
         !titulo ||
         !descricao ||
@@ -337,7 +350,25 @@ export const ReportController = {
         !consideracoesTecnicoPericiais ||
         !casoReferencia
       ) {
+        console.log("Campos obrigatórios faltando:", {
+          titulo: !!titulo,
+          descricao: !!descricao,
+          objetoPericia: !!objetoPericia,
+          metodoUtilizado: !!metodoUtilizado,
+          destinatario: !!destinatario,
+          materiaisUtilizados: !!materiaisUtilizados,
+          examesRealizados: !!examesRealizados,
+          consideracoesTecnicoPericiais: !!consideracoesTecnicoPericiais,
+          casoReferencia: !!casoReferencia,
+        });
         res.status(400).json({ msg: "Todos os campos obrigatórios devem ser preenchidos." });
+        return;
+      }
+  
+      // Validar se casoReferencia é um ObjectId válido
+      if (!mongoose.Types.ObjectId.isValid(casoReferencia)) {
+        console.log("casoReferencia inválido:", casoReferencia);
+        res.status(400).json({ msg: "ID do caso inválido." });
         return;
       }
   
@@ -354,11 +385,20 @@ export const ReportController = {
       }
   
       // Buscar o caso
+      console.log("Buscando caso com ID:", casoReferencia);
       const caso = await Case.findById(casoReferencia);
       if (!caso) {
+        console.log("Caso não encontrado para ID:", casoReferencia);
         res.status(404).json({ msg: "Caso não encontrado." });
         return;
       }
+  
+      // Logar os dados do caso encontrado
+      console.log("Caso encontrado:", {
+        _id: caso._id,
+        titulo: caso.titulo,
+        descricao: caso.descricao,
+      });
   
       // Buscar evidências associadas ao caso
       const evidencias = await Evidence.find({ caso: caso._id });
@@ -381,7 +421,7 @@ export const ReportController = {
   
       // Gerar análise técnica e conclusão técnica usando a IA
       const htmlContent = await generatePdfContent(
-        { 
+        {
           titulo,
           descricao,
           objetoPericia,
@@ -408,7 +448,7 @@ export const ReportController = {
         titulo,
         descricao,
         objetoPericia,
-        analiseTecnica: htmlContent.includes("Análise Técnica:") 
+        analiseTecnica: htmlContent.includes("Análise Técnica:")
           ? htmlContent.split('<p><strong>Análise Técnica:</strong> ')[1].split('</p>')[0]
           : "Análise técnica gerada automaticamente pela IA",
         metodoUtilizado,
@@ -416,7 +456,7 @@ export const ReportController = {
         materiaisUtilizados,
         examesRealizados,
         consideracoesTecnicoPericiais,
-        conclusaoTecnica: htmlContent.includes("Conclusão Técnica:") 
+        conclusaoTecnica: htmlContent.includes("Conclusão Técnica:")
           ? htmlContent.split('<p><strong>Conclusão Técnica:</strong> ')[1].split('</p>')[0]
           : "Conclusão técnica gerada automaticamente pela IA",
         caso: caso._id,
