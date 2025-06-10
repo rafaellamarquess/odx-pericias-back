@@ -136,13 +136,18 @@ export const EvidenceController = {
 
   async updateEvidence(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      console.log("Requisição recebida em updateEvidence:", {
+        body: req.body,
+        file: req.file,
+      });
+  
       const { evidenceId } = req.params;
-
+  
       if (!mongoose.Types.ObjectId.isValid(evidenceId)) {
         res.status(400).json({ msg: "ID da evidência inválido." });
         return;
       }
-
+  
       const allowedEvidenceFields = ["casoReferencia", "tipo", "categoria", "coletadoPor", "texto"];
       const allowedVitimaFields = [
         "nome",
@@ -155,25 +160,25 @@ export const EvidenceController = {
         "lesoes",
         "identificada",
       ];
-
+  
       const evidenceUpdate: any = {};
       const vitimaUpdate: any = {};
       let casoId;
-
+  
       const requiredFields = ["casoReferencia", "tipo", "categoria", "coletadoPor"];
       for (const field of requiredFields) {
-        if (req.body[field] === undefined || req.body[field] === "") {
-          res.status(400).json({ msg: `Campo obrigatório ausente: ${field}` });
+        if (!(field in req.body) || req.body[field] === null || req.body[field] === undefined) {
+          res.status(400).json({ msg: `Campo obrigatório ausente ou inválido: ${field}` });
           return;
         }
       }
-
+  
       for (const field of allowedEvidenceFields) {
         if (req.body[field] !== undefined) {
           evidenceUpdate[field] = req.body[field];
         }
       }
-
+  
       if (req.body.casoReferencia) {
         const foundCase = await Case.findOne({ casoReferencia: req.body.casoReferencia });
         if (!foundCase) {
@@ -183,7 +188,7 @@ export const EvidenceController = {
         casoId = foundCase._id as mongoose.Types.ObjectId;
         evidenceUpdate.caso = casoId;
       }
-
+  
       if (req.body.coletadoPor) {
         const user = await User.findOne({ nome: req.body.coletadoPor });
         if (!user) {
@@ -192,17 +197,17 @@ export const EvidenceController = {
         }
         evidenceUpdate.coletadoPor = user._id;
       }
-
+  
       if (req.file && req.file.path) {
         evidenceUpdate.imagem = req.file.path;
       }
-
+  
       const existingEvidence = await Evidence.findById(evidenceId);
       if (!existingEvidence) {
         res.status(404).json({ msg: "Evidência não encontrada." });
         return;
       }
-
+  
       if (evidenceUpdate.tipo) {
         const tiposValidos = ["imagem", "texto"];
         if (!tiposValidos.includes(evidenceUpdate.tipo)) {
@@ -218,20 +223,19 @@ export const EvidenceController = {
           return;
         }
       }
-
+  
       let vitimaId = req.body.vitimaId;
       if (!vitimaId) {
         res.status(400).json({ msg: "ID da vítima é obrigatório para atualização." });
         return;
       }
-
+  
       const existingVitima = await Vitima.findById(vitimaId);
       if (!existingVitima) {
         res.status(404).json({ msg: "Vítima não encontrada." });
         return;
       }
-
-      // Associate victim with case if not already associated
+  
       if (casoId && !existingVitima.cases) {
         existingVitima.cases = casoId as mongoose.Types.ObjectId;
         await existingVitima.save();
@@ -240,13 +244,13 @@ export const EvidenceController = {
         res.status(400).json({ msg: "O caso selecionado não está associado à vítima." });
         return;
       }
-
+  
       for (const field of allowedVitimaFields) {
         if (req.body[field] !== undefined) {
           vitimaUpdate[field] = req.body[field];
         }
       }
-
+  
       if (Object.keys(vitimaUpdate).length > 0) {
         vitimaUpdate.idadeAproximada = vitimaUpdate.idadeAproximada
           ? parseInt(vitimaUpdate.idadeAproximada)
@@ -254,7 +258,7 @@ export const EvidenceController = {
         vitimaUpdate.identificada = vitimaUpdate.identificada === "true" || vitimaUpdate.identificada === true;
         await Vitima.findByIdAndUpdate(vitimaId, vitimaUpdate, { new: true });
       }
-
+  
       const updatedEvidence = await Evidence.findByIdAndUpdate(
         evidenceId,
         { ...evidenceUpdate, vitima: vitimaId, caso: casoId || existingEvidence.caso },
@@ -263,14 +267,14 @@ export const EvidenceController = {
         .populate("coletadoPor", "nome")
         .populate("vitima", "nome sexo estadoCorpo identificada cidade lesoes")
         .populate("caso", "casoReferencia");
-
+  
       if (!updatedEvidence) {
         res.status(404).json({ msg: "Falha ao atualizar a evidência." });
         return;
       }
-
+  
       const updatedVitima = await Vitima.findById(vitimaId);
-
+  
       res.status(200).json({
         msg: "Evidência atualizada com sucesso.",
         evidence: updatedEvidence,
@@ -282,7 +286,7 @@ export const EvidenceController = {
       next(err);
     }
   },
-
+  
   async deleteEvidence(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { evidenceId } = req.params;
