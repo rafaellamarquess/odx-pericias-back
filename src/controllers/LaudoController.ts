@@ -412,60 +412,6 @@ const LaudoController = {
     }
   },
 
-  async signLaudo(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const { laudoId } = req.params;
-
-      const laudo = await Laudo.findById(laudoId)
-        .populate<{ evidencias: IEvidence[] }>("evidencias")
-        .populate<{ vitima: IVitima }>("vitima")
-        .populate<{ caso: ICase }>("caso")
-        .populate<{ perito: IUser }>("perito", "nome");
-
-      if (!laudo) {
-        res.status(404).json({ msg: "Laudo não encontrado." });
-        return;
-      }
-
-      if (laudo.assinaturaDigital) {
-        res.status(400).json({ msg: "Laudo já está assinado digitalmente." });
-        return;
-      }
-
-      const peritoDoc = await User.findById(laudo.perito).select("nome");
-      if (!peritoDoc) {
-        res.status(404).json({ msg: "Perito não encontrado." });
-        return;
-      }
-
-      const signatureData = `${laudo.perito}-${Date.now()}`;
-      const assinaturaDigital = crypto.createHash("sha256").update(signatureData).digest("hex");
-      laudo.assinaturaDigital = assinaturaDigital;
-      await laudo.save();
-
-      const htmlContent = await generateLaudoPdfContent(
-        laudo,
-        laudo.evidencias,
-        laudo.vitima,
-        laudo.caso,
-        peritoDoc.nome || "N/A",
-        req.user?.nome || peritoDoc.nome
-      );
-
-      const pdfBuffer = await generatePdf(htmlContent);
-      fs.writeFileSync(`signed_laudo_${laudoId}.pdf`, pdfBuffer);
-      console.log(`PDF assinado salvo para debug: signed_laudo_${laudoId}.pdf`);
-
-      const pdfBase64 = pdfBuffer.toString("base64");
-
-      res.status(200).json({ msg: "Laudo assinado com sucesso.", laudo, pdf: pdfBase64 });
-    } catch (err) {
-      console.error("Erro em signLaudo:", err);
-      res.status(500).json({ msg: "Erro interno do servidor.", error: err instanceof Error ? err.message : String(err) });
-      next(err);
-    }
-  },
-
   async updateLaudo(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const { laudoId } = req.params;
