@@ -60,7 +60,6 @@ export const EvidenceController = {
           res.status(404).json({ msg: "Vítima não encontrada." });
           return;
         }
-        // Associate victim with case if not already associated
         if (!vitima.cases) {
           vitima.cases = foundCase._id as mongoose.Types.ObjectId;
           await vitima.save();
@@ -81,7 +80,7 @@ export const EvidenceController = {
           estadoCorpo,
           lesoes,
           identificada: identificada === "true" || identificada === true,
-          cases: foundCase._id, // Corrected from 'caso' to 'cases'
+          cases: foundCase._id, 
         });
         console.log(`Nova vítima criada: ${vitima._id}`);
       }

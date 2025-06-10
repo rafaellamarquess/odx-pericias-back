@@ -8,7 +8,6 @@ export const DashboardController = {
       const { ano, mes } = req.query;
       const matchStage: any = {};
 
-      // Validação do parâmetro 'ano'
       if (ano && typeof ano === "string") {
         const anoNum = Number(ano);
         if (isNaN(anoNum) || anoNum < 1900 || anoNum > new Date().getFullYear()) {
@@ -21,7 +20,6 @@ export const DashboardController = {
         };
       }
 
-      // Validação do parâmetro 'mes'
       if (mes && typeof mes === "string") {
         const mesNum = Number(mes);
         if (isNaN(mesNum) || mesNum < 1 || mesNum > 12) {
@@ -53,7 +51,7 @@ export const DashboardController = {
         {
           $unwind: {
             path: "$caso",
-            preserveNullAndEmptyArrays: false, // Exclui evidências sem caso correspondente
+            preserveNullAndEmptyArrays: false,
           },
         },
         {
@@ -61,7 +59,6 @@ export const DashboardController = {
         },
       ];
 
-      // Logar documentos após o filtro inicial
       const documentosFiltrados = await Evidence.aggregate([...basePipeline]);
       console.log(
         "Documentos após o filtro:",
@@ -69,6 +66,7 @@ export const DashboardController = {
           casoId: doc.caso._id,
           cidade: doc.caso.cidade,
           dataCriacao: doc.caso.dataCriacao,
+          vitimaId: doc.vitima,
         }))
       );
 
@@ -131,10 +129,49 @@ export const DashboardController = {
         { $sort: { quantidade: -1 as 1 | -1 } },
       ];
 
+      const vitimaPipeline = [
+        ...basePipeline,
+        {
+          $lookup: {
+            from: "vitimas",
+            localField: "vitima",
+            foreignField: "_id",
+            as: "vitimaData",
+          },
+        },
+        {
+          $unwind: {
+            path: "$vitimaData",
+            preserveNullAndEmptyArrays: false,
+          },
+        },
+        {
+          $group: {
+            _id: "$vitimaData.identificada",
+            quantidade: { $sum: 1 },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            categoria: {
+              $cond: [
+                { $eq: ["$_id", true] },
+                "Identificada",
+                "Não Identificada",
+              ],
+            },
+            quantidade: 1,
+            tipoGrafico: "pizza",
+          },
+        },
+        { $sort: { quantidade: -1 as 1 | -1 } },
+      ];
+
       const [totalCasosResult, casosPorMes, vitima, sexo, estado, lesoes, cidade] = await Promise.all([
         totalCasosPromise,
         casosPorMesPromise,
-        Evidence.aggregate(criarAgrupamento("vitima", "evidence", "pizza")),
+        Evidence.aggregate(vitimaPipeline),
         Evidence.aggregate(criarAgrupamento("sexo", "evidence", "pizza")),
         Evidence.aggregate(criarAgrupamento("estadoCorpo", "evidence", "barra")),
         Evidence.aggregate(criarAgrupamento("lesoes", "evidence", "barra")),
@@ -143,7 +180,7 @@ export const DashboardController = {
 
       const totalCasos = totalCasosResult[0]?.total || 0;
 
-      // Logar dados de cidade retornados
+      console.log("Dados de vítima agregados:", vitima);
       console.log("Dados de cidade agregados:", cidade);
 
       res.status(200).json({
