@@ -309,69 +309,64 @@ async function generatePdf(htmlContent: string): Promise<Buffer> {
 
 export const ReportController = {
   // CRIAR RELATÓRIO
+  // ReportController.ts
   async createReport(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const {
         titulo,
         descricao,
         objetoPericia,
-        analiseTecnica,
         metodoUtilizado,
         destinatario,
         materiaisUtilizados,
         examesRealizados,
         consideracoesTecnicoPericiais,
-        conclusaoTecnica,
         casoReferencia,
         audioURL,
       } = req.body;
-
-      // Validação dos campos obrigatórios
+  
+      // Validação dos campos obrigatórios (removido analiseTecnica e conclusaoTecnica)
       if (
         !titulo ||
         !descricao ||
         !objetoPericia ||
-        !analiseTecnica ||
         !metodoUtilizado ||
         !destinatario ||
         !materiaisUtilizados ||
         !examesRealizados ||
         !consideracoesTecnicoPericiais ||
-        !conclusaoTecnica ||
         !casoReferencia
       ) {
         res.status(400).json({ msg: "Todos os campos obrigatórios devem ser preenchidos." });
         return;
       }
-
+  
       // Processar áudio
       let finalAudioURL: string | undefined;
       if (req.file) {
-        // URL gerada pelo multer-storage-cloudinary
-        finalAudioURL = (req.file as any).path; // Cloudinary URL
+        finalAudioURL = (req.file as any).path;
       } else if (audioURL) {
-        // Validar URL fornecida
         if (!isValidCloudinaryURL(audioURL)) {
           res.status(400).json({ msg: "URL de áudio inválida. Deve ser uma URL válida do Cloudinary." });
           return;
         }
         finalAudioURL = audioURL;
       }
-
+  
       // Buscar o caso
       const caso = await Case.findById(casoReferencia);
       if (!caso) {
         res.status(404).json({ msg: "Caso não encontrado." });
         return;
       }
-
+  
       // Buscar evidências associadas ao caso
       const evidencias = await Evidence.find({ caso: caso._id });
       if (!evidencias.length) {
         res.status(404).json({ msg: "Nenhuma evidência encontrada para este caso." });
         return;
       }
-
+  
       // Buscar vítimas associadas às evidências
       const vitimaIds = Array.from(new Set(evidencias.map((e) => e.vitima.toString())));
       const vitimas = await Vitima.find({ _id: { $in: vitimaIds } });
@@ -379,23 +374,51 @@ export const ReportController = {
         res.status(404).json({ msg: "Nenhuma vítima encontrada para este caso." });
         return;
       }
-
+  
       // Buscar laudos associados às evidências
       const evidenciaIds = evidencias.map((e) => e._id);
       const laudos = await Laudo.find({ evidencia: { $in: evidenciaIds } });
-
-      // Criar o relatório
+  
+      // Gerar análise técnica e conclusão técnica usando a IA
+      const htmlContent = await generatePdfContent(
+        { 
+          titulo,
+          descricao,
+          objetoPericia,
+          metodoUtilizado,
+          destinatario,
+          materiaisUtilizados,
+          examesRealizados,
+          consideracoesTecnicoPericiais,
+          caso: caso._id,
+          evidencias: evidencias.map((e) => e._id),
+          vitimas: vitimas.map((v) => v._id),
+          laudos: laudos.map((l) => l._id),
+          audioURL: finalAudioURL,
+          assinadoDigitalmente: false,
+        } as IReport,
+        caso,
+        evidencias,
+        vitimas,
+        laudos
+      );
+  
+      // Extrair analiseTecnica e conclusaoTecnica do conteúdo gerado
       const report = new Report({
         titulo,
         descricao,
         objetoPericia,
-        analiseTecnica,
+        analiseTecnica: htmlContent.includes("Análise Técnica:") 
+          ? htmlContent.split('<p><strong>Análise Técnica:</strong> ')[1].split('</p>')[0]
+          : "Análise técnica gerada automaticamente pela IA",
         metodoUtilizado,
         destinatario,
         materiaisUtilizados,
         examesRealizados,
         consideracoesTecnicoPericiais,
-        conclusaoTecnica,
+        conclusaoTecnica: htmlContent.includes("Conclusão Técnica:") 
+          ? htmlContent.split('<p><strong>Conclusão Técnica:</strong> ')[1].split('</p>')[0]
+          : "Conclusão técnica gerada automaticamente pela IA",
         caso: caso._id,
         evidencias: evidencias.map((e) => e._id),
         vitimas: vitimas.map((v) => v._id),
@@ -404,18 +427,15 @@ export const ReportController = {
         assinadoDigitalmente: false,
       });
       await report.save();
-
-      // Gerar o conteúdo do relatório
-      const htmlContent = await generatePdfContent(report, caso, evidencias, vitimas, laudos);
+  
+      // Gerar o PDF
       const pdfBuffer = await generatePdf(htmlContent);
-
-      // Salvar PDF para debug
       fs.writeFileSync("debug.pdf", pdfBuffer);
       console.log("PDF salvo para debug em debug.pdf");
-
+  
       // Converter para base64
       const pdfBase64 = pdfBuffer.toString("base64");
-
+  
       res.status(200).json({ msg: "Relatório criado com sucesso.", report, pdf: pdfBase64 });
     } catch (error) {
       console.error("Erro ao gerar relatório:", error);
