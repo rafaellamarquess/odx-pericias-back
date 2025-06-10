@@ -61,12 +61,12 @@ export const EvidenceController = {
           return;
         }
         // Se a vítima não tem caso associado, associá-la ao caso atual
-        if (!vitima.caso) {
-          vitima.caso = foundCase._id as mongoose.Types.ObjectId;
+        if (!vitima.cases) {
+          vitima.cases = foundCase._id as mongoose.Types.ObjectId;
           await vitima.save();
           console.log(`Vítima ${vitimaId} associada ao caso ${foundCase._id}`);
-        } else if (vitima.caso.toString() !== (foundCase._id as mongoose.Types.ObjectId).toString()) {
-          console.log(`Conflito de caso: vítima ${vitimaId} associada a ${vitima.caso}, mas caso enviado é ${foundCase._id}`);
+        } else if (vitima.cases.toString() !== (foundCase._id as mongoose.Types.ObjectId).toString()) {
+          console.log(`Conflito de caso: vítima ${vitimaId} associada a ${vitima.cases}, mas caso enviado é ${foundCase._id}`);
           res.status(400).json({ msg: "O caso selecionado não está associado à vítima." });
           return;
         }
